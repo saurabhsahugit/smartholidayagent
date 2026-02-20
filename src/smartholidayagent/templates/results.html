@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Results - SmartHolidayAgent</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Results</h1>
+
+      <section>
+        <h2>Your inputs</h2>
+        <ul>
+          <li><strong>Total annual leave:</strong> {{ prefs.total_annual_leave }}</li>
+          <li><strong>Max days per trip:</strong> {{ prefs.max_days_per_trip }}</li>
+          <li><strong>Preferred trip length ranges:</strong>
+            {% if prefs.preferred_trip_length_ranges %}
+              <ul>
+                {% for r in prefs.preferred_trip_length_ranges %}
+                  <li>{{ r.min_days }}-{{ r.max_days }} days</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              None
+            {% endif %}
+          </li>
+          <li><strong>Blocked periods:</strong>
+            {% if prefs.blocked_periods %}
+              <ul>
+                {% for b in prefs.blocked_periods %}
+                  <li>{{ b.start }} .. {{ b.end }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              None
+            {% endif %}
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Upcoming England &amp; Wales bank holidays (GOV.UK)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Title</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for h in holidays %}
+            <tr>
+              <td>{{ h.date }}</td>
+              <td>{{ h.title }}</td>
+              <td>{{ h.notes or "" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <p><a href="/">Back</a></p>
+    </main>
+  </body>
+</html>

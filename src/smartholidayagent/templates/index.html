@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>SmartHolidayAgent</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>SmartHolidayAgent</h1>
+
+      {% if error %}
+      <div class="error">
+        <strong>Error:</strong> {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/plan">
+        <label>
+          Total annual leave allocation
+          <input type="number" name="total_annual_leave" min="0" max="366" value="25" required />
+        </label>
+
+        <label>
+          Max days per trip
+          <input type="number" name="max_days_per_trip" min="1" max="366" value="10" required />
+        </label>
+
+        <label>
+          Preferred trip length ranges (comma-separated, like <code>3-5, 7-10</code>)
+          <input type="text" name="preferred_trip_length_ranges" placeholder="3-5, 7-10" />
+        </label>
+
+        <label>
+          Blocked periods (one per line, like <code>2026-03-01..2026-03-07</code>)
+          <textarea name="blocked_periods" rows="4" placeholder="2026-03-01..2026-03-07"></textarea>
+        </label>
+
+        <button type="submit">See results</button>
+      </form>
+    </main>
+  </body>
+</html>
