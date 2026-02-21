@@ -1,0 +1,34 @@
+Metadata-Version: 2.4
+Name: smartholidayagent
+Version: 0.1.0
+Summary: Smart holiday planning agent (annual leave + bank holidays).
+Requires-Python: >=3.14
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn[standard]>=0.27
+Requires-Dist: jinja2>=3.1
+Requires-Dist: httpx>=0.27
+Requires-Dist: pydantic>=2.6
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23; extra == "dev"
+Requires-Dist: ruff>=0.4; extra == "dev"
+
+## Deploy to AWS (CloudFormation + ECS Fargate)
+
+Prereqs:
+- AWS CLI authenticated
+- Docker installed
+- Permissions to create: CloudFormation stacks, IAM roles, ECR, ECS, ALB, EC2 networking
+
+Deploy:
+```bash
+export AWS_REGION=us-east-1
+./scripts/deploy_aws.sh
+```
+
+This will:
+- create a small VPC (2 public subnets)
+- create ECS Fargate service behind an ALB
+- build & push the container to ECR
+- update the service to run the new image
