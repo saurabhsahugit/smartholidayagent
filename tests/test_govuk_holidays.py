@@ -27,3 +27,4 @@ async def test_parse_england_and_wales_from_fixture(monkeypatch: pytest.MonkeyPa
     holidays = await client.get_england_and_wales_holidays()
     assert [h.date for h in holidays] == [date(2026, 1, 1), date(2026, 12, 25)]
     assert holidays[0].title == "New Year’s Day"
+    assert holidays[1].title == "Christmas Day"
