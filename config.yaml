@@ -1,0 +1,19 @@
+# Smart Holiday Agent Configuration
+
+app:
+  title: "Smart Holiday Agent"
+  description: "AI-powered UK holiday planning assistant"
+  
+llm:
+  provider: "openai"  # Future: support for other providers
+  model: "gpt-4o-mini"
+  temperature: 0.7
+  max_tokens: 1000
+
+holidays:
+  api_url: "https://www.gov.uk/bank-holidays.json"
+  region: "england-and-wales"  # Options: england-and-wales, scotland, northern-ireland
+
+date_format:
+  display: "%d/%m/%Y"  # UK format: dd/mm/yyyy
+  locale: "en_GB"
