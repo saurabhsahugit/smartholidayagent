@@ -1,0 +1,14 @@
+# Web framework for chat interface
+streamlit==1.31.0
+
+# OpenAI API for LLM integration
+openai==1.12.0
+
+# HTTP requests for fetching UK holidays
+requests==2.31.0
+
+# Date/time utilities
+python-dateutil==2.8.2
+
+# YAML configuration parsing
+PyYAML==6.0.1
