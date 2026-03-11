@@ -5,6 +5,11 @@ from pathlib import Path
 import yaml
 
 
+class HolidayFetchError(Exception):
+    """Exception raised when holiday data cannot be fetched or is invalid."""
+    pass
+
+
 VALID_REGIONS = {"england-and-wales", "scotland", "northern-ireland"}
 
 
