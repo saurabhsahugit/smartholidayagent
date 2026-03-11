@@ -1,7 +1,16 @@
 from requests import get
+from requests.exceptions import RequestException
 from datetime import datetime
 from pathlib import Path
 import yaml
+
+
+class HolidayFetchError(Exception):
+    """Exception raised when holiday data cannot be fetched or is invalid."""
+    pass
+
+
+VALID_REGIONS = {"england-and-wales", "scotland", "northern-ireland"}
 
 
 def _load_config() -> dict:
@@ -10,31 +19,44 @@ def _load_config() -> dict:
         return yaml.safe_load(f)
 
 
-
-def get_holidays(year: int, country_code: str) -> list:
+def get_holidays(year: int, region: str) -> list[dict]:
     """
-    Fetches public holidays for a given year and country code using the Nager.Date API.
+    Fetches UK public holidays for a given year and region from GOV.UK.
 
     Args:
-        year (int): The year for which to fetch holidays.
-        country_code (str): The ISO 3166-1 alpha-2 country code (e.g., 'GB' for the UK).
+        year (int): Year to filter holidays by (e.g. 2026).
+        region (str): One of england-and-wales, scotland, northern-ireland.
 
     Returns:
-        list: A list of dictionaries containing holiday information.
+        list[dict]: Holiday events for the given year/region.
     """
+    if year < 1900 or year > 2100:
+        raise ValueError("year must be between 1900 and 2100")
+    if region not in VALID_REGIONS:
+        raise ValueError(f"invalid region: {region}")
 
-    def get_current_year():
-        return datetime.now().year
-    
-    url = f"https://www.gov.uk/bank-holidays.json"
-    config=_load_config()
-    response = get(config["holidays"]["api_url"])
+    config = _load_config()
+    api_url = config["holidays"]["api_url"]
 
-    if response.status_code == 200:
-        holidays = response.json()
-        england_and_wales_holidays = holidays["england-and-wales"]
-        print(f"Holidays for {get_current_year()} in england-and-wales: {england_and_wales_holidays}" )
-        return england_and_wales_holidays
-    else:
-        print(f"Error fetching holidays: {response.status_code}")
+    try:
+        response = get(api_url, timeout=10)
+    except RequestException:
         return []
+
+    if response.status_code != 200:
+        return []
+
+    payload = response.json()
+    region_data = payload.get(region)
+    if not isinstance(region_data, dict):
+        raise HolidayFetchError(f"Missing/invalid region data: {region}")
+
+    events = region_data.get("events")
+    if not isinstance(events, list):
+        raise HolidayFetchError(f"Missing/invalid events list for region: {region}")
+
+    filtered = [e for e in events if e["date"].startswith(str(year))]
+    return [
+        {"title": e["title"], "date": e["date"], "notes": e.get("notes", "")}
+        for e in filtered
+    ]
