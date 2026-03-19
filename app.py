@@ -68,19 +68,7 @@ try:
     with st.spinner("Fetching holiday data..."):
         holidays_data = get_holidays(selected_year, 'england-and-wales')
         logger.info(f"Holiday data received: {holidays_data}")
-
-    # if holidays_data and "events" in holidays_data:
-    #     events = holidays_data["events"]
-    #     # Filter by selected year
-    #     year_events = [
-    #         event for event in events 
-    #         if event["date"].startswith(str(selected_year))
-    #     ]
-        
-        # if year_events:
-        #     st.success(f"Found {len(year_events)} public holidays!")
-            
-            # Display holidays in a nice format
+# Display holidays in a nice format
     for events in holidays_data:
         date_str = events["date"]
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
@@ -94,14 +82,6 @@ try:
             st.markdown(f"**{events['title']}**")
         with col2:
             st.caption(f"{day_name}, {formatted_date}")
-        # with col3:
-        #     st.markdown("🎊")
-            
-        # if events.get("notes"):
-        #     st.markdown(f"*{events['notes']}*")    
-        #     st.divider()
-        # else:
-        #     st.warning(f"No holidays found for {selected_year}")
         
 except Exception as e:
     st.error(f"Error loading holidays: {str(e)}")
