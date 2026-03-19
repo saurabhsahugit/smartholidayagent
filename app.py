@@ -2,20 +2,23 @@
 Smart Holiday Agent - Main Application
 ======================================
 
-This is the entry point for the Smart Holiday Agent.
-Currently, this is just a basic Streamlit app to verify setup.
-
-Future development will add:
-- Chat interface
-- UK holiday data fetching
-- LLM-powered optimization
-- User authentication
+AI-powered UK holiday planning assistant.
 
 Author: Saurabh Sahu
 Repository: github.com/saurabhsahugit/smartholidayagent
 """
 
 import streamlit as st
+from datetime import datetime
+from src.holidays import get_holidays
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Set page configuration - this must be the first Streamlit command
 st.set_page_config(
@@ -29,33 +32,62 @@ st.set_page_config(
 st.title("🏖️ Smart Holiday Agent")
 st.markdown("### AI-Powered UK Holiday Planning Assistant")
 
-st.info("""
-👋 **Welcome!** This is the foundation of your Smart Holiday Agent.
-
-**Current Status:** Basic scaffolding complete ✅
-
-**Next Steps:**
-1. Install dependencies: `pip install -r requirements.txt`
-2. Copy `.env.example` to `.env` and add your OpenAI API key
-3. Run this app: `streamlit run app.py`
-4. Start building features incrementally!
-"""
-)
-
-# Sidebar placeholder
+# Sidebar configuration
 with st.sidebar:
     st.header("⚙️ Configuration")
-    st.markdown("_Settings will appear here in future versions_")
+    
+    # Year selector
+    current_year = datetime.now().year
+    selected_year = st.selectbox(
+        "Select Year",
+        options=[current_year, current_year + 1],
+        index=0
+    )
     
     st.divider()
     
     st.markdown("**Project Status:**")
     st.markdown("- ✅ Project structure")
-    st.markdown("- ⏳ UK holidays fetching")
+    st.markdown("- ✅ UK holidays fetching")
     st.markdown("- ⏳ Chat interface")
     st.markdown("- ⏳ LLM integration")
     st.markdown("- ⏳ Optimization engine")
 
+# Main content area
+st.info("""
+👋 **Welcome!** View UK public holidays and plan your time off strategically.
+
+**Phase 2 Complete:** Holiday data fetching and display ✅
+""")
+
+# Fetch and display holidays
+st.subheader(f"🎉 England & Wales Public Holidays {selected_year}")
+
+try:
+    # Fetch holidays
+    with st.spinner("Fetching holiday data..."):
+        holidays_data = get_holidays(selected_year, 'england-and-wales')
+        logger.info(f"Holiday data received: {holidays_data}")
+# Display holidays in a nice format
+    for events in holidays_data:
+        date_str = events["date"]
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        day_name = date_obj.strftime("%A")
+        formatted_date = date_obj.strftime("%d %B %Y")
+                
+        # Create columns for better layout
+        col1, col2 = st.columns([2, 1])
+                
+        with col1:
+            st.markdown(f"**{events['title']}**")
+        with col2:
+            st.caption(f"{day_name}, {formatted_date}")
+        
+except Exception as e:
+    st.error(f"Error loading holidays: {str(e)}")
+    st.info("💡 Make sure you have an internet connection and the API is accessible.")
+
 # Footer
 st.divider()
-st.caption("Built with ❤️ using Streamlit and OpenAI")
+st.caption("Built with ❤️ using Streamlit and UK Government Data")
+st.caption("Data source: gov.uk/bank-holidays")
