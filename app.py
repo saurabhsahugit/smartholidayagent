@@ -14,10 +14,18 @@ from src.holidays import get_holidays
 import logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+def configure_logging() -> None:
+    """Configure logging once, avoiding duplicate handlers on Streamlit reruns."""
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        # Logging is already configured; avoid adding duplicate handlers.
+        return
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+configure_logging()
+
 logger = logging.getLogger(__name__)
 
 # Set page configuration - this must be the first Streamlit command
@@ -68,7 +76,7 @@ try:
     with st.spinner("Fetching holiday data..."):
         holidays_data = get_holidays(selected_year, 'england-and-wales')
         logger.info(f"Holiday data received: {holidays_data}")
-# Display holidays in a nice format
+    # Display holidays in a nice format
     for events in holidays_data:
         date_str = events["date"]
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")

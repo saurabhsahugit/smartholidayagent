@@ -1,5 +1,3 @@
-from asyncio import events
-
 from requests import get
 from requests.exceptions import RequestException
 from datetime import datetime
@@ -7,13 +5,7 @@ from pathlib import Path
 import yaml
 import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
-
 
 class HolidayFetchError(Exception):
     """Exception raised when holiday data cannot be fetched or is invalid."""
@@ -56,9 +48,9 @@ def get_holidays(year: int, region: str) -> list[dict]:
         logger.error(f"Error fetching holidays: {e}")
         return []
 
-    # if response.status_code != 200:
-    #     logger.error(f"Error fetching holidays: HTTP {response.status_code}")
-    #     return []
+    if response.status_code != 200:
+        logger.error(f"Error fetching holidays: HTTP {response.status_code}")
+        return []
 
     payload = response.json()
     region_data = payload.get(region)
@@ -72,9 +64,4 @@ def get_holidays(year: int, region: str) -> list[dict]:
     logger.info(f"Successfully fetched {len(events)} holidays for region: {region}")
     
     filtered = [e for e in events if e["date"].startswith(str(year))]
-    # logger.info(f"Filtered events: {filtered}")
-    # return [
-    #     {"title": e["title"], "date": e["date"], "notes": e.get("notes", "")}
-    #     for e in filtered
-    # ]
     return filtered
