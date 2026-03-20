@@ -1,14 +1,17 @@
-from requests import get
-from requests.exceptions import RequestException
+import logging
 from datetime import datetime
 from pathlib import Path
+
 import yaml
-import logging
+from requests import get
+from requests.exceptions import RequestException
 
 logger = logging.getLogger(__name__)
 
+
 class HolidayFetchError(Exception):
     """Exception raised when holiday data cannot be fetched or is invalid."""
+
     pass
 
 
@@ -19,6 +22,7 @@ def _load_config() -> dict:
     config_path = Path(__file__).resolve().parent.parent / "config.yaml"
     with config_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
 
 def get_holidays(year: int, region: str) -> list[dict]:
     """
@@ -40,10 +44,9 @@ def get_holidays(year: int, region: str) -> list[dict]:
     api_url = config["holidays"]["api_url"]
     logger.info(f"Fetching holidays from: {api_url}")
 
-
     try:
         response = get(api_url, timeout=10)
-    
+
     except RequestException as e:
         logger.error(f"Error fetching holidays: {e}")
         return []
@@ -60,8 +63,8 @@ def get_holidays(year: int, region: str) -> list[dict]:
     events = region_data.get("events")
     if not isinstance(events, list):
         raise HolidayFetchError(f"Missing/invalid events list for region: {region}")
-    
+
     logger.info(f"Successfully fetched {len(events)} holidays for region: {region}")
-    
+
     filtered = [e for e in events if e["date"].startswith(str(year))]
     return filtered
