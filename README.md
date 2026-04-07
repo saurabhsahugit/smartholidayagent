@@ -1,136 +1,56 @@
-# 🏖️ Smart Holiday Agent
+**Smart Holiday Agent**
 
-AI-powered assistant for planning holidays within the UK. Maximizes your holiday breaks while minimizing the use of personal leave days.
+AI-powered system that helps UK users optimise holiday planning by maximising time off while minimising leave usage.
 
-## 🎯 What This Does
+**Problem**
 
-The Smart Holiday Agent helps UK residents:
-- 📅 Identify optimal times to take holidays by analyzing UK public holidays
-- 🧮 Maximize consecutive days off with minimal personal leave usage
-- 💡 Get AI-powered suggestions ranked by efficiency
-- 🎨 Plan holidays through an easy-to-use chat interface
+Planning holidays around UK public holidays is inefficient and manual.
+Users struggle to identify optimal leave patterns that maximise consecutive days off.
 
-## 🏗️ Current Status
+**Solution**
 
-**Phase 1: Foundation** ✅ (You are here!)
-- Basic project structure
-- Configuration files
-- Hello World Streamlit app
+An AI-powered assistant that:
 
-**Future Phases:**
-- Phase 2: UK holiday data fetching
-- Phase 3: Chat interface
-- Phase 4: LLM integration
-- Phase 5: Optimization algorithm
-- Phase 6: User authentication
-- Phase 7: AWS deployment
+- Analyses UK public holidays
+- Calculates optimal leave combinations
+- Uses LLMs to generate personalised holiday plans
+- Provides ranked recommendations based on efficiency
+- System Overview
 
-## 🚀 Quick Start
+**High-level flow:**
 
-### Prerequisites
-- Python 3.9 or higher
-- pip (Python package manager)
-- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+1. User inputs preferences (dates, flexibility, location)
+2. System retrieves UK public holiday data
+3. Optimization logic generates candidate leave plans
+4. LLM refines and presents results in natural language
 
-### Installation
+**Architecture**
+- Frontend: Streamlit
+- Backend: Python
+- LLM: OpenAI API
+- Data: UK public holiday dataset
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/saurabhsahugit/smartholidayagent.git
-   cd smartholidayagent
-   ```
+**Logic:**
+Rule-based optimisation for leave/holiday planning
+LLM for explanation and user interaction
 
-2. **Create a virtual environment** (recommended)
-   ```bash
-   # On Windows
-   python -m venv venv
-   venv\Scripts\activate
+**Key Design Decisions**
+- Used LLM for explanation, not core optimisation
+- Kept optimisation deterministic for reliability
+- API-based LLM approach to reduce complexity
+- Modular design to allow future model replacement
 
-   # On macOS/Linux
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+**Trade-offs**
+- API vs custom model: faster to build, less control
+- Cost vs response quality
+- Deterministic logic vs generative flexibility
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+**Limitations**
+- No real-time travel pricing
+- Dependent on static holiday data
+- LLM responses may vary in quality
 
-4. **Set up environment variables**
-   ```bash
-   # Copy the example file
-   cp .env.example .env
-   
-   # Edit .env and add your OpenAI API key
-   # On Windows: notepad .env
-   # On macOS: open -e .env
-   # On Linux: nano .env
-   ```
-
-5. **Run the app**
-   ```bash
-   streamlit run app.py
-   ```
-
-6. **Open in browser**
-   - The app will automatically open at `http://localhost:8501`
-   - If not, navigate there manually
-
-## 📁 Project Structure
-
-```
-smartholidayagent/
-├── app.py                  # Main Streamlit application
-├── requirements.txt        # Python dependencies
-├── config.yaml            # Application configuration
-├── .env.example           # Environment variable template
-├── .gitignore            # Git ignore rules
-├── README.md             # This file
-├── src/                  # Future: Python modules
-├── tests/                # Future: Test files
-├── data/                 # Future: User data storage
-└── deployment/           # Future: AWS deployment configs
-```
-
-## 🛠️ Development
-
-### Running Locally
-```bash
-streamlit run app.py
-```
-
-### Installing New Packages
-```bash
-pip install package-name
-pip freeze > requirements.txt  # Update requirements
-```
-
-### Testing (Future)
-```bash
-pytest tests/
-```
-
-## 📚 Learning Resources
-
-New to these technologies? Here are some helpful resources:
-
-- **Streamlit:** [Official Tutorial](https://docs.streamlit.io/get-started)
-- **OpenAI API:** [Quickstart Guide](https://platform.openai.com/docs/quickstart)
-- **Python Basics:** [Python.org Tutorial](https://docs.python.org/3/tutorial/)
-- **Git & GitHub:** [GitHub Skills](https://skills.github.com/)
-
-## 🤝 Contributing
-
-This is a personal learning project, but suggestions are welcome!
-
-## 📄 License
-
-MIT License - Feel free to use this for learning.
-
-## 🙋 Questions?
-
-Open an issue on GitHub if you run into any problems!
-
----
-
-**Next Step:** Once you've got this running, we'll add UK holiday fetching in Phase 2! 🎉
+*Future Improvements*
+- Integrate flight and hotel APIs
+- Add user preferences and memory
+- Introduce cost-aware recommendations
