@@ -1,18 +1,3 @@
-"""
-LLM Handler for Smart Holiday Agent
-===================================
-
-This module handles all interactions with OpenAI's GPT models.
-
-Key Concepts:
-1. System Prompt: Instructions that tell the LLM who it is and how to behave
-2. Messages: Conversation history (user + assistant messages)
-3. Function Calling: Letting the LLM use our Python functions
-4. Context: Giving the LLM relevant information (like holiday data)
-
-Author: Saurabh Sahu
-"""
-
 import logging
 import os
 from typing import Any, Dict, List
@@ -51,36 +36,47 @@ class HolidayLLMHandler:
 
         # Initialize OpenAI client
         self.client = OpenAI(api_key=api_key)
-
-        # Model configuration
-        # gpt-4o-mini is cheaper and faster, good for learning
-        # gpt-4o is more powerful but costs more
         self.model = "gpt-4o-mini"
 
         # System prompt: This tells the LLM who it is and how to behave
-        self.system_prompt = """
-        You are a Smart Holiday Agent for the UK.
+        # Update the system_prompt section (around line 55):
+
+        self.system_prompt = """You are a Smart Holiday Agent for the UK, specializing in optimal leave planning.
+
         Your role:
-        - Help users plan their holidays strategically
-        - Provide information about UK public holidays
-        - Suggest optimal times to take leave
+        - Help users plan their holidays strategically to maximize time off
+        - Provide information about UK public holidays (England & Wales)
+        - Suggest optimal times to take leave days
+        - Calculate the best "bang for buck" - most consecutive days off with fewest leave days used
         - Be friendly, helpful, and concise
+
+        Holiday Planning Strategies:
+        - Bridging: Taking 1 day off to connect a holiday with a weekend (e.g., holiday on Thursday → take Friday off → 4-day weekend)
+        - Sandwiching: Taking days off between two holidays to create extended breaks
+        - Efficiency Ratio: Total days off ÷ Leave days used (higher is better!)
+
         Guidelines:
         - Always mention specific dates and day names
-        - Use emojis sparingly (🎉 for holidays, 📅 for dates)
-        - If you don't have enough information, ask the user
+        - Show calculations when suggesting leave plans
+        - Example: "If you take Friday off, you'll get 4 consecutive days (1 leave day → 4 days off, ratio: 4:1)"
+        - Use emojis sparingly (🎉 for holidays, 📅 for dates, 💡 for tips)
+        - If you don't have enough information, ask the user for preferences
         - Focus on England & Wales bank holidays
-        Current capabilities:
-        - Answer questions about public holidays
-        - Find next upcoming holidays
-        - Count holidays in a period
-        - Provide holiday details (date, day of week)
-        """
 
+        Example responses:
+        User: "Help me plan around Easter"
+        You: "Easter 2026 is on Sunday, April 5th. Good Friday (April 3rd) is a bank holiday.
+        💡 Strategy: Take Monday April 6th and Tuesday April 7th off.
+        Result: 5 consecutive days (Fri-Tue) using only 2 leave days! Ratio: 2.5:1"
+    """
         logger.info(f"LLM Handler initialized with model: {self.model}")
 
     def create_chat_completion(
-        self, messages: List[Dict[str, str]], holidays_data: Dict[str, Any] = None
+        self,
+        messages: List[Dict[str, str]],
+        holidays_data: Dict[str, Any],
+        year: str,
+        region: str = None,
     ) -> str:
         """
         Send messages to the LLM and get a response.
@@ -104,26 +100,34 @@ class HolidayLLMHandler:
 
         try:
             # Build the full message list
-            full_messages = [{"role": "system", "content": self.system_prompt}]
+            full_messages = [
+                {"role": "system", "content": "You are a Smart Holiday Agent..."},
+                {"role": "system", "content": "Available holiday data: ..."},
+                {"role": "user", "content": "What's the next holiday?"},
+                {"role": "user", "content": f"Year: {year}"},
+                {"role": "user", "content": f"Region: {region}"},
+            ]
 
             # Add holiday data to context if available
             if holidays_data:
-                context = self._format_holidays_for_context(holidays_data)
+                context = holidays_data
                 full_messages.append(
-                    {"role": "system", "content": f"Available holiday data:\n{context}"}
+                    {
+                        "role": "system",
+                        "content": f"Holidays data from UK government website:\n{context}",
+                    }
                 )
-
             # Add user conversation history
             full_messages.extend(messages)
-
+            logger.info(f"Messages to LLM: {full_messages}")
             logger.info(f"Sending {len(messages)} messages to LLM")
 
             # Make the API call to OpenAI
             response = self.client.chat.completions.create(
-                model=self.model,
+                model="gpt-4o-mini",
                 messages=full_messages,
-                temperature=0.7,  # Controls randomness (0=focused, 1=creative)
-                max_tokens=500,  # Maximum response length
+                temperature=0.7,
+                max_tokens=500,
             )
 
             # Extract the response text
@@ -153,7 +157,7 @@ class HolidayLLMHandler:
         if not holidays_data or "events" not in holidays_data:
             return "No holiday data available."
 
-        events = holidays_data.get("events", [])
+        events = holidays_data
 
         # Build a formatted string
         formatted = "UK Public Holidays (England & Wales):\n\n"

@@ -3,6 +3,7 @@ from datetime import datetime
 
 import streamlit as st
 
+import src.llm_handler
 from src.holidays import get_holidays
 
 
@@ -38,6 +39,13 @@ if "messages" not in st.session_state:
 if "holidays_data" not in st.session_state:
     st.session_state.holidays_data = None
 
+# In the session state initialization block:
+if "llm_handler" not in st.session_state:
+    try:
+        st.session_state.llm_handler = src.llm_handler.HolidayLLMHandler()
+    except ValueError as e:
+        st.session_state.llm_handler = None
+        logger.warning(f"LLM handler not initialized: {e}")
 # Main page content
 st.title("🏖️ Smart Holiday Agent")
 st.markdown("### AI-Powered UK Holiday Planning Assistant")
@@ -51,6 +59,7 @@ with st.sidebar:
     selected_year = st.selectbox(
         "Select Year", options=[current_year, current_year + 1], index=0
     )
+    st.session_state.selected_year = selected_year
 
     # Fetch holidays button
     if st.button("🔄 Load Holidays", use_container_width=True):
@@ -170,7 +179,13 @@ with col1:
     # Chat input
     if prompt := st.chat_input("Ask about UK holidays..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        response = generate_response(prompt, st.session_state.holidays_data)
+        response = st.session_state.llm_handler.create_chat_completion(
+            messages=st.session_state.messages,
+            holidays_data=st.session_state.holidays_data,
+            year=st.session_state.selected_year,
+            region="england-and-wales",
+        )
+
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
 
@@ -180,6 +195,7 @@ with col2:
 
     if st.session_state.holidays_data:
         logger.info(f"Displaying holidays for {selected_year}")
+        events = st.session_state.holidays_data
         year_events = [
             event for event in events if event["date"].startswith(str(selected_year))
         ]
