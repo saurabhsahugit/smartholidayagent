@@ -1,20 +1,29 @@
-"""
-Smart Holiday Agent - Main Application
-======================================
-
-AI-powered UK holiday planning assistant.
-
-Author: Saurabh Sahu
-Repository: github.com/saurabhsahugit/smartholidayagent
-"""
-
+import logging
 from datetime import datetime
 
 import streamlit as st
 
 from src.holidays import get_holidays
 
-# Set page configuration - this must be the first Streamlit command
+
+# Configure logging
+def configure_logging() -> None:
+    """Configure logging once, avoiding duplicate handlers on Streamlit reruns."""
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        # Logging is already configured; avoid adding duplicate handlers.
+        return
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+
+configure_logging()
+
+
+logger = logging.getLogger(__name__)
+
 st.set_page_config(
     page_title="Smart Holiday Agent",
     page_icon="🏖️",
@@ -43,29 +52,23 @@ with st.sidebar:
         "Select Year", options=[current_year, current_year + 1], index=0
     )
 
-    st.divider()
-
     # Fetch holidays button
     if st.button("🔄 Load Holidays", use_container_width=True):
         with st.spinner("Fetching holiday data..."):
-            st.session_state.holidays_data = get_holidays(selected_year, "GB")
+            st.session_state.holidays_data = get_holidays(
+                selected_year, "england-and-wales"
+            )
+            logger.info(f"Holidays data loaded for {selected_year}")
             if st.session_state.holidays_data:
-                events = st.session_state.holidays_data.get("events", [])
+                events = st.session_state.holidays_data
                 year_events = [
                     event
                     for event in events
                     if event["date"].startswith(str(selected_year))
                 ]
-                st.success(f"✅ Loaded {len(year_events)} holidays!")
-
-    st.divider()
-
-    st.markdown("**Project Status:**")
-    st.markdown("- ✅ Project structure")
-    st.markdown("- ✅ UK holidays fetching")
-    st.markdown("- ✅ Chat interface")
-    st.markdown("- ⏳ LLM integration")
-    st.markdown("- ⏳ Optimization engine")
+                st.success(
+                    f"✅ Loaded {len([event for event in events if event['date'].startswith(str(selected_year))])} holidays!"
+                )
 
     st.divider()
 
@@ -76,76 +79,6 @@ with st.sidebar:
 
 # Create two columns: chat on left, holidays on right
 col1, col2 = st.columns([2, 1])
-
-# Left column: Chat Interface
-with col1:
-    st.subheader("💬 Chat with Holiday Agent")
-
-    # Display chat messages
-    chat_container = st.container(height=500)
-    with chat_container:
-        if not st.session_state.messages:
-            st.info(
-                """
-            👋 **Welcome!** I'm your Smart Holiday Agent.
-
-            Ask me things like:
-            - "What holidays are coming up?"
-            - "When is the next bank holiday?"
-            - "Show me all holidays in 2026"
-
-            *Note: LLM integration coming in Phase 4!*
-            """
-            )
-        else:
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-    # Chat input
-    if prompt := st.chat_input("Ask about UK holidays..."):
-        # Add user message to chat
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        # Generate response (basic for now, LLM integration in Phase 4)
-        # response = generate_response(prompt, st.session_state.holidays_data)
-
-        # Add assistant response to chat
-        # st.session_state.messages.append({"role": "assistant", "content": response})
-
-        # Rerun to display new messages
-        st.rerun()
-
-# Right column: Holiday Display
-with col2:
-    st.subheader(f"🎉 Holidays {selected_year}")
-
-    if st.session_state.holidays_data:
-        events = st.session_state.holidays_data.get("events", [])
-        year_events = [
-            event for event in events if event["date"].startswith(str(selected_year))
-        ]
-
-        if year_events:
-            for event in year_events:
-                date_str = event["date"]
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                formatted_date = date_obj.strftime("%d %b")
-
-                # Compact display
-                with st.container():
-                    cols = st.columns([3, 1])
-                    with cols[0]:
-                        st.markdown(f"**{event['title']}**")
-                        st.caption(formatted_date)
-                    with cols[1]:
-                        if event.get("bunting", False):
-                            st.markdown("🎊")
-                    st.divider()
-        else:
-            st.warning(f"No holidays found for {selected_year}")
-    else:
-        st.info("👈 Click 'Load Holidays' to see the list!")
 
 
 def generate_response(user_input: str, holidays_data: dict) -> str:
@@ -162,11 +95,14 @@ def generate_response(user_input: str, holidays_data: dict) -> str:
     """
     user_input_lower = user_input.lower()
 
+    logger.info(f"All events: {holidays_data}")
+    events = holidays_data
+
     # Check if holidays data is loaded
     if not holidays_data:
         return "⚠️ Clicking the '🔄 Load Holidays' button to reload!"
-
-    events = holidays_data.get("events", [])
+    else:
+        events = holidays_data
 
     # Simple keyword matching for now
     if any(word in user_input_lower for word in ["next", "upcoming", "soon"]):
@@ -195,20 +131,79 @@ def generate_response(user_input: str, holidays_data: dict) -> str:
 
     else:
         return """
-I'm still learning! 🤖
+            I'm still learning! 🤖
 
-Right now I can answer:
-- "What's the next holiday?"
-- "Show me all holidays"
-- "How many holidays are there?"
+            Right now I can answer:
+            - "What's the next holiday?"
+            - "Show me all holidays"
+            - "How many holidays are there?"
 
-*In Phase 4, I'll be powered by AI and can answer much more!*
-        """
+            *In Phase 4, I'll be powered by AI and can answer much more!*
+            """
+
+
+# Left column: Chat Interface
+with col1:
+    st.subheader("💬 Chat with Holiday Agent")
+
+    # Display chat messages
+    chat_container = st.container(height=500)
+    with chat_container:
+        if not st.session_state.messages:
+            st.info(
+                """
+            👋 **Welcome!** I'm your Smart Holiday Agent.
+
+            Ask me things like:
+            - "What holidays are coming up?"
+            - "When is the next bank holiday?"
+            - "Show me all holidays in 2026"
+
+            *Note: LLM integration coming in Phase 4!*
+            """
+            )
+        else:
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+
+    # Chat input
+    if prompt := st.chat_input("Ask about UK holidays..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        response = generate_response(prompt, st.session_state.holidays_data)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()
+
+# Right column: Holiday Display
+with col2:
+    st.subheader(f"🎉 Holidays {selected_year}")
+
+    if st.session_state.holidays_data:
+        logger.info(f"Displaying holidays for {selected_year}")
+        year_events = [
+            event for event in events if event["date"].startswith(str(selected_year))
+        ]
+
+        if year_events:
+            for event in year_events:
+                date_str = event["date"]
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%d %b")
+
+                # Compact display
+                with st.container():
+                    cols = st.columns([1, 1])
+                    with cols[0]:
+                        st.markdown(f"**{event['title']}**")
+                    with cols[1]:
+                        st.caption(formatted_date)
+        else:
+            st.warning(f"No holidays found for {selected_year}")
+    else:
+        st.info("👈 Click 'Load Holidays' to see the list!")
 
 
 # Footer
 st.divider()
-st.caption("Built with ❤️ using Streamlit and UK Government Data")
-st.caption("Data source: gov.uk/bank-holidays | Phase 3: Chat Interface Complete")
 st.caption("Built with ❤️ using Streamlit and UK Government Data")
 st.caption("Data source: gov.uk/bank-holidays | Phase 3: Chat Interface Complete")
