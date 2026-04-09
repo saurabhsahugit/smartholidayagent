@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -35,6 +34,8 @@ def get_holidays(year: int, region: str) -> list[dict]:
     Returns:
         list[dict]: Holiday events for the given year/region.
     """
+
+    logger.info(f"Getting holidays for year: {year}, region: {region}")
     if year < 1900 or year > 2100:
         raise ValueError("year must be between 1900 and 2100")
     if region not in VALID_REGIONS:
@@ -64,7 +65,9 @@ def get_holidays(year: int, region: str) -> list[dict]:
     if not isinstance(events, list):
         raise HolidayFetchError(f"Missing/invalid events list for region: {region}")
 
-    logger.info(f"Successfully fetched {len(events)} holidays for region: {region}")
+    logger.info(
+        f"✅ Loaded {len([event for event in events if event['date']])} holidays!"
+    )
 
     filtered = [e for e in events if e["date"].startswith(str(year))]
     return filtered
