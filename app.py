@@ -81,6 +81,9 @@ with st.sidebar:
 
     st.divider()
 
+    if st.session_state.llm_handler is None:
+        st.warning("Add `OPENAI_API_KEY` to use the AI chat experience.")
+
     # Clear chat button
     if st.button("🗑️ Clear Chat", use_container_width=True):
         st.session_state.messages = []
@@ -179,12 +182,18 @@ with col1:
     # Chat input
     if prompt := st.chat_input("Ask about UK holidays..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        response = st.session_state.llm_handler.create_chat_completion(
-            messages=st.session_state.messages,
-            holidays_data=st.session_state.holidays_data,
-            year=st.session_state.selected_year,
-            region="england-and-wales",
-        )
+        if st.session_state.llm_handler is None:
+            response = (
+                "⚠️ The AI chat is not configured yet. Add `OPENAI_API_KEY` to "
+                "your environment and reload the app."
+            )
+        else:
+            response = st.session_state.llm_handler.create_chat_completion(
+                messages=st.session_state.messages,
+                holidays_data=st.session_state.holidays_data,
+                year=st.session_state.selected_year,
+                region="england-and-wales",
+            )
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
@@ -222,4 +231,4 @@ with col2:
 # Footer
 st.divider()
 st.caption("Built with ❤️ using Streamlit and UK Government Data")
-st.caption("Data source: gov.uk/bank-holidays | Phase 3: Chat Interface Complete")
+st.caption("Data source: gov.uk/bank-holidays | LLM integration in progress")

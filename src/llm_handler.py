@@ -74,8 +74,8 @@ class HolidayLLMHandler:
     def create_chat_completion(
         self,
         messages: List[Dict[str, str]],
-        holidays_data: Dict[str, Any],
-        year: str,
+        holidays_data: List[Dict[str, Any]],
+        year: int,
         region: str = None,
     ) -> str:
         """
@@ -99,24 +99,29 @@ class HolidayLLMHandler:
         """
 
         try:
-            # Build the full message list
-            full_messages = [
-                {"role": "system", "content": "You are a Smart Holiday Agent..."},
-                {"role": "system", "content": "Available holiday data: ..."},
-                {"role": "user", "content": "What's the next holiday?"},
-                {"role": "user", "content": f"Year: {year}"},
-                {"role": "user", "content": f"Region: {region}"},
+            full_messages = [{"role": "system", "content": self.system_prompt}]
+
+            context_parts = [
+                f"Planning year: {year}",
+                f"Region: {region or 'england-and-wales'}",
             ]
 
             # Add holiday data to context if available
             if holidays_data:
-                context = holidays_data
-                full_messages.append(
-                    {
-                        "role": "system",
-                        "content": f"Holidays data from UK government website:\n{context}",
-                    }
+                context_parts.append(
+                    "Holidays data from the UK government website:\n"
+                    f"{self._format_holidays_for_context(holidays_data)}"
                 )
+            else:
+                context_parts.append(
+                    "No holidays data is currently loaded. Ask the user to load it "
+                    "before giving date-specific recommendations."
+                )
+
+            full_messages.append(
+                {"role": "system", "content": "\n\n".join(context_parts)}
+            )
+
             # Add user conversation history
             full_messages.extend(messages)
             logger.info(f"Messages to LLM: {full_messages}")
@@ -124,23 +129,25 @@ class HolidayLLMHandler:
 
             # Make the API call to OpenAI
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=self.model,
                 messages=full_messages,
                 temperature=0.7,
                 max_tokens=500,
             )
 
             # Extract the response text
-            assistant_message = response.choices[0].message.content
+            assistant_message = response.choices[0].message.content or ""
 
             logger.info("LLM response received successfully")
-            return assistant_message
+            return assistant_message.strip() or (
+                "⚠️ Sorry, I couldn't generate a response just now."
+            )
 
         except Exception as e:
             logger.error(f"Error calling LLM: {e}")
             return f"⚠️ Sorry, I encountered an error: {str(e)}\n\nPlease check your API key and internet connection."
 
-    def _format_holidays_for_context(self, holidays_data: Dict[str, Any]) -> str:
+    def _format_holidays_for_context(self, holidays_data: List[Dict[str, Any]]) -> str:
         """
         Format holiday data into a readable string for the LLM.
 
@@ -154,10 +161,15 @@ class HolidayLLMHandler:
             str: Formatted text describing all holidays
         """
 
-        if not holidays_data or "events" not in holidays_data:
+        if not holidays_data:
             return "No holiday data available."
 
         events = holidays_data
+        if isinstance(holidays_data, dict):
+            events = holidays_data.get("events", [])
+
+        if not isinstance(events, list):
+            return "No holiday data available."
 
         # Build a formatted string
         formatted = "UK Public Holidays (England & Wales):\n\n"
@@ -175,7 +187,7 @@ class HolidayLLMHandler:
         return formatted
 
     def stream_chat_completion(
-        self, messages: List[Dict[str, str]], holidays_data: Dict[str, Any] = None
+        self, messages: List[Dict[str, str]], holidays_data: List[Dict[str, Any]] = None
     ):
         """
         Stream responses from the LLM (word-by-word).
@@ -197,16 +209,14 @@ if __name__ == "__main__":
     test_messages = [{"role": "user", "content": "What's the next bank holiday?"}]
 
     # Mock holiday data
-    test_holidays = {
-        "events": [
-            {
-                "title": "Christmas Day",
-                "date": "2026-12-25",
-                "notes": "",
-                "bunting": True,
-            }
-        ]
-    }
+    test_holidays = [
+        {
+            "title": "Christmas Day",
+            "date": "2026-12-25",
+            "notes": "",
+            "bunting": True,
+        }
+    ]
 
-    response = handler.create_chat_completion(test_messages, test_holidays)
+    response = handler.create_chat_completion(test_messages, test_holidays, 2026)
     print(f"LLM Response: {response}")

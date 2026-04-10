@@ -4,12 +4,12 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from src.holidays import _load_config, get_holidays
+
 # Add the project root to the Python path
 # This tells Python where to find the 'src' module
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-from src.holidays import _load_config, get_holidays
 
 
 class TestLoadConfig:
@@ -62,13 +62,12 @@ class TestGetHolidays:
             mock_get.return_value = mock_response
 
             # Execute: Call the function we're testing
-            result = get_holidays(2024, "GB")
+            result = get_holidays(2024, "england-and-wales")
 
             # Assert: Verify the results
             assert result is not None
-            assert "events" in result
-            assert len(result["events"]) == 2
-            assert result["events"][0]["title"] == "New Year's Day"
+            assert len(result) == 2
+            assert result[0]["title"] == "New Year's Day"
 
             # Verify the API was called with correct URL
             mock_get.assert_called_once()
@@ -83,7 +82,7 @@ class TestGetHolidays:
             mock_get.return_value = mock_response
 
             # Execute
-            result = get_holidays(2024, "GB")
+            result = get_holidays(2024, "england-and-wales")
 
             # Assert: Should return empty list on error
             assert result == []
@@ -101,7 +100,7 @@ class TestGetHolidays:
             mock_response.json.return_value = mock_api_response
             mock_get.return_value = mock_response
 
-            get_holidays(2024, "GB")
+            get_holidays(2024, "england-and-wales")
 
             # Verify it called the API with the URL from config
             called_url = mock_get.call_args[0][0]

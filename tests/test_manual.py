@@ -2,6 +2,7 @@
 
 from src.holidays import get_holidays
 
-holidays = get_holidays(2024, "GB")
-print(f"Found {len(holidays)} holidays")
-print(holidays)
+if __name__ == "__main__":
+    holidays = get_holidays(2024, "england-and-wales")
+    print(f"Found {len(holidays)} holidays")
+    print(holidays)
