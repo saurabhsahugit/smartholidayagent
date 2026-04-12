@@ -1,10 +1,11 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 import streamlit as st
 
 import src.llm_handler
 from src.holidays import get_holidays
+from src.planning import build_constraints, format_plan_summary, generate_ranked_plans
 
 
 # Configure logging
@@ -39,6 +40,9 @@ if "messages" not in st.session_state:
 if "holidays_data" not in st.session_state:
     st.session_state.holidays_data = None
 
+if "excluded_leave_dates" not in st.session_state:
+    st.session_state.excluded_leave_dates = []
+
 # In the session state initialization block:
 if "llm_handler" not in st.session_state:
     try:
@@ -60,6 +64,45 @@ with st.sidebar:
         "Select Year", options=[current_year, current_year + 1], index=0
     )
     st.session_state.selected_year = selected_year
+
+    st.subheader("Holiday Strategy")
+    max_leave_days = st.slider("Max leave days", min_value=1, max_value=10, value=4)
+    min_total_days_off = st.slider(
+        "Minimum total days off", min_value=3, max_value=14, value=5
+    )
+    max_window_days = st.slider(
+        "Maximum break window", min_value=4, max_value=18, value=12
+    )
+    top_n = st.slider("Number of options", min_value=1, max_value=5, value=3)
+    preferred_month_labels = st.multiselect(
+        "Preferred months",
+        options=[
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ],
+        help="Leave blank to search the whole year.",
+    )
+    excluded_leave_dates = st.date_input(
+        "Unavailable leave date",
+        value=None,
+        min_value=date(selected_year, 1, 1),
+        max_value=date(selected_year, 12, 31),
+        help="Optional single date to exclude from leave plans.",
+    )
+
+    selected_excluded_dates = []
+    if excluded_leave_dates:
+        selected_excluded_dates = [excluded_leave_dates]
 
     # Fetch holidays button
     if st.button("🔄 Load Holidays", use_container_width=True):
@@ -88,6 +131,23 @@ with st.sidebar:
     if st.button("🗑️ Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+
+planner_constraints = build_constraints(
+    max_leave_days=max_leave_days,
+    min_total_days_off=min_total_days_off,
+    max_window_days=max_window_days,
+    preferred_month_labels=preferred_month_labels,
+    excluded_leave_dates=selected_excluded_dates,
+)
+
+recommended_plans = []
+if st.session_state.holidays_data:
+    recommended_plans = generate_ranked_plans(
+        holidays_data=st.session_state.holidays_data,
+        year=selected_year,
+        constraints=planner_constraints,
+        top_n=top_n,
+    )
 
 # Create two columns: chat on left, holidays on right
 col1, col2 = st.columns([2, 1])
@@ -200,6 +260,29 @@ with col1:
 
 # Right column: Holiday Display
 with col2:
+    st.subheader("📈 Top Leave Strategies")
+
+    if recommended_plans:
+        for index, plan in enumerate(recommended_plans, start=1):
+            details = format_plan_summary(plan)
+            with st.container(border=True):
+                st.markdown(
+                    f"**Option {index}: {details['total_days_off']} days off, "
+                    f"{details['leave_days_used']} leave day(s)**"
+                )
+                st.caption(details["date_range"])
+                metric_columns = st.columns(3)
+                metric_columns[0].metric("Efficiency", details["efficiency_ratio"])
+                metric_columns[1].metric("Leave used", details["leave_days_used"])
+                metric_columns[2].metric("Weekend days", details["weekend_count"])
+                st.markdown(f"**Take leave:** {details['leave_dates']}")
+                st.markdown(f"**Public holidays included:** {details['holiday_dates']}")
+    elif st.session_state.holidays_data:
+        st.info("No plans matched the current strategy filters. Try relaxing them.")
+    else:
+        st.info("Load holidays to generate ranked leave strategies.")
+
+    st.divider()
     st.subheader(f"🎉 Holidays {selected_year}")
 
     if st.session_state.holidays_data:
