@@ -17,6 +17,10 @@ An AI-powered assistant that:
 - Provides ranked recommendations based on efficiency
 - System Overview
 
+![UI interface](image.png)
+
+![OpenAI response and efficacy metrics](image-1.png)
+
 **High-level flow:**
 
 1. User inputs preferences (dates, flexibility, location)
@@ -25,6 +29,7 @@ An AI-powered assistant that:
 4. LLM refines and presents results in natural language
 
 **Architecture**
+
 - Frontend: Streamlit
 - Backend: Python
 - LLM: OpenAI API
@@ -35,22 +40,26 @@ Rule-based optimisation for leave/holiday planning
 LLM for explanation and user interaction
 
 **Key Design Decisions**
+
 - Used LLM for explanation, not core optimisation
 - Kept optimisation deterministic for reliability
 - API-based LLM approach to reduce complexity
 - Modular design to allow future model replacement
 
 **Trade-offs**
+
 - API vs custom model: faster to build, less control
 - Cost vs response quality
 - Deterministic logic vs generative flexibility
 
 **Limitations**
+
 - No real-time travel pricing
 - Dependent on static holiday data
 - LLM responses may vary in quality
 
-*Future Improvements*
+_Future Improvements_
+
 - Integrate flight and hotel APIs
 - Add user preferences and memory
 - Introduce cost-aware recommendations
