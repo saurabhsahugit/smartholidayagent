@@ -17,9 +17,14 @@ An AI-powered assistant that:
 - Provides ranked recommendations based on efficiency
 - System Overview
 
+UI Interface
 ![UI interface](image.png)
 
-![OpenAI response and efficacy metrics](image-1.png)
+Example response 1:
+<img width="2008" height="906" alt="image" src="https://github.com/user-attachments/assets/78f17106-b58a-4c47-b610-704897c28fcf" />
+Example response 2:
+<img width="2008" height="906" alt="image" src="https://github.com/user-attachments/assets/d423233d-fd21-4caa-ad57-29587f082d69" />
+
 
 **High-level flow:**
 
