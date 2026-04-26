@@ -253,6 +253,8 @@ with col1:
                 holidays_data=st.session_state.holidays_data,
                 year=st.session_state.selected_year,
                 region="england-and-wales",
+                planner_constraints=planner_constraints,
+                top_n=top_n,
             )
 
         st.session_state.messages.append({"role": "assistant", "content": response})
