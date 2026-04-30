@@ -231,7 +231,7 @@ with col1:
             - "When is the next bank holiday?"
             - "Show me all holidays in 2026"
 
-            *Note: LLM integration coming in Phase 4!*
+            *AI chat is available when `OPENAI_API_KEY` is configured.*
             """
             )
         else:
@@ -316,4 +316,4 @@ with col2:
 # Footer
 st.divider()
 st.caption("Built with ❤️ using Streamlit and UK Government Data")
-st.caption("Data source: gov.uk/bank-holidays | LLM integration in progress")
+st.caption("Data source: gov.uk/bank-holidays | LLM integration enabled")

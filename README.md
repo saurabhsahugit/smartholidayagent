@@ -2,6 +2,11 @@
 
 AI-powered system that helps UK users optimise holiday planning by maximising time off while minimising leave usage.
 
+## Project status
+- ✅ LLM integration completed
+- 📍 Next focus: AI leadership signals via telemetry, evaluation, and trade-off storytelling
+- 🗺️ 4-week milestone roadmap: see `docs/NEXT_STEPS_ROADMAP.md`
+
 **Problem**
 
 Planning holidays around UK public holidays is inefficient and manual.
