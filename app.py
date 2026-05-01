@@ -222,8 +222,7 @@ with col1:
     chat_container = st.container(height=500)
     with chat_container:
         if not st.session_state.messages:
-            st.info(
-                """
+            """
             👋 **Welcome!** I'm your Smart Holiday Agent.
 
             Ask me things like:
@@ -231,9 +230,7 @@ with col1:
             - "When is the next bank holiday?"
             - "Show me all holidays in 2026"
 
-            *Note: LLM integration coming in Phase 4!*
-            """
-            )
+            *Note: LLM integration coming in Phase 4!*"""
         else:
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
