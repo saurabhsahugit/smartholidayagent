@@ -152,68 +152,6 @@ if st.session_state.holidays_data:
 # Create two columns: chat on left, holidays on right
 col1, col2 = st.columns([2, 1])
 
-
-def generate_response(user_input: str, holidays_data: dict) -> str:
-    """
-    Generate a response to user input (basic implementation).
-    In Phase 4, this will be replaced with LLM integration.
-
-    Args:
-        user_input (str): User's message
-        holidays_data (dict): Holiday data
-
-    Returns:
-        str: Response message
-    """
-    user_input_lower = user_input.lower()
-
-    logger.info(f"All events: {holidays_data}")
-    events = holidays_data
-
-    # Check if holidays data is loaded
-    if not holidays_data:
-        return "⚠️ Clicking the '🔄 Load Holidays' button to reload!"
-    else:
-        events = holidays_data
-
-    # Simple keyword matching for now
-    if any(word in user_input_lower for word in ["next", "upcoming", "soon"]):
-        today = datetime.now().date()
-        upcoming = [
-            event
-            for event in events
-            if datetime.strptime(event["date"], "%Y-%m-%d").date() > today
-        ]
-        if upcoming:
-            next_holiday = upcoming[0]
-            date_obj = datetime.strptime(next_holiday["date"], "%Y-%m-%d")
-            return f"🎉 The next bank holiday is **{next_holiday['title']}** on {date_obj.strftime('%A, %d %B %Y')}!"
-        else:
-            return "No upcoming holidays found in the loaded data."
-
-    elif any(word in user_input_lower for word in ["all", "list", "show"]):
-        response = "📅 Here are all the holidays:\n\n"
-        for event in events:
-            date_obj = datetime.strptime(event["date"], "%Y-%m-%d")
-            response += f"- **{event['title']}**: {date_obj.strftime('%d %B %Y')}\n"
-        return response
-
-    elif "how many" in user_input_lower:
-        return f"📊 There are **{len(events)}** bank holidays in the loaded data."
-
-    else:
-        return """
-            I'm still learning! 🤖
-
-            Right now I can answer:
-            - "What's the next holiday?"
-            - "Show me all holidays"
-            - "How many holidays are there?"
-
-            *In Phase 4, I'll be powered by AI and can answer much more!*
-            """
-
-
 # Left column: Chat Interface
 with col1:
     st.subheader("💬 Chat with Holiday Agent")
@@ -230,7 +168,7 @@ with col1:
             - "When is the next bank holiday?"
             - "Show me all holidays in 2026"
 
-            *Note: LLM integration coming in Phase 4!*"""
+            *AI chat is available when `OPENAI_API_KEY` is configured.*"""
         else:
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
@@ -245,15 +183,16 @@ with col1:
                 "your environment and reload the app."
             )
         else:
+            max_history_messages = 12
+            recent_messages = st.session_state.messages[-max_history_messages:]
             response = st.session_state.llm_handler.create_chat_completion(
-                messages=st.session_state.messages,
+                messages=recent_messages,
                 holidays_data=st.session_state.holidays_data,
                 year=st.session_state.selected_year,
                 region="england-and-wales",
                 planner_constraints=planner_constraints,
                 top_n=top_n,
             )
-
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
 
@@ -313,4 +252,6 @@ with col2:
 # Footer
 st.divider()
 st.caption("Built with ❤️ using Streamlit and UK Government Data")
-st.caption("Data source: gov.uk/bank-holidays | LLM integration in progress")
+st.caption(
+    "Data source: gov.uk/bank-holidays | LLM integration enabled with OpenAI API"
+)
