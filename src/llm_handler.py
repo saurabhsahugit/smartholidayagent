@@ -85,6 +85,7 @@ class HolidayLLMHandler:
         region: str = None,
         planner_constraints: UserConstraints = None,
         top_n: int = 3,
+        current_date: date | None = None,
     ) -> str:
         """
         Send messages to the LLM and get a response.
@@ -107,11 +108,15 @@ class HolidayLLMHandler:
         """
 
         try:
+            today = current_date or date.today()
             full_messages = [{"role": "system", "content": self.system_prompt}]
 
             context_parts = [
+                f"Today's date: {today.isoformat()}",
                 f"Planning year: {year}",
                 f"Region: {region or 'england-and-wales'}",
+                "Use today's date above when the user asks about today, current "
+                "dates, upcoming holidays, or future-looking leave plans.",
                 self._format_constraints_for_context(planner_constraints, top_n),
             ]
 
@@ -161,6 +166,7 @@ class HolidayLLMHandler:
                         region=region or "england-and-wales",
                         planner_constraints=planner_constraints,
                         top_n=top_n,
+                        current_date=today,
                     )
                     full_messages.append(
                         {
@@ -337,6 +343,7 @@ class HolidayLLMHandler:
         region: str,
         planner_constraints: UserConstraints,
         top_n: int,
+        current_date: date,
     ) -> dict[str, Any]:
         if tool_call.function.name != "get_ranked_holiday_strategies":
             return {"error": f"Unsupported tool: {tool_call.function.name}"}
@@ -355,10 +362,12 @@ class HolidayLLMHandler:
             year=year,
             constraints=constraints,
             top_n=requested_top_n,
+            as_of=current_date,
         )
         return {
             "year": year,
             "region": region,
+            "as_of": current_date.isoformat(),
             "constraints": self._serialize_constraints(constraints),
             "plans": [self._serialize_plan(plan) for plan in plans],
         }
