@@ -87,11 +87,15 @@ class HolidayOptimizer:
         self.holiday_dates = self._parse_holiday_dates(holidays_data, year)
 
     def optimize(
-        self, constraints: UserConstraints | None = None, top_n: int = 3
+        self,
+        constraints: UserConstraints | None = None,
+        top_n: int = 3,
+        as_of: date | None = None,
     ) -> list[LeavePlan]:
         constraints = constraints or UserConstraints()
         plans: dict[tuple[date, ...], LeavePlan] = {}
-        current = date(self.year, 1, 1)
+        today = as_of or date.today()
+        current = max(date(self.year, 1, 1), today)
         final_day = date(self.year, 12, 31)
 
         while current <= final_day:

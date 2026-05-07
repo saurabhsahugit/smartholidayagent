@@ -150,7 +150,7 @@ if st.session_state.holidays_data:
     )
 
 # Create two columns: chat on left, holidays on right
-col1, col2 = st.columns([2, 1])
+col1, col2, col3 = st.columns([1, 1, 1])
 
 
 def generate_response(user_input: str, holidays_data: dict) -> str:
@@ -228,14 +228,12 @@ with col1:
             Ask me things like:
             - "What holidays are coming up?"
             - "When is the next bank holiday?"
-            - "Show me all holidays in 2026"
-
-            *Note: LLM integration coming in Phase 4!*"""
+            - "Show me all holidays in 2026"""
         else:
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-
+with col1:
     # Chat input
     if prompt := st.chat_input("Ask about UK holidays..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -281,7 +279,7 @@ with col2:
     else:
         st.info("Load holidays to generate ranked leave strategies.")
 
-    st.divider()
+with col3:
     st.subheader(f"🎉 Holidays {selected_year}")
 
     if st.session_state.holidays_data:

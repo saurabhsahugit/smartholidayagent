@@ -43,7 +43,7 @@ def generate_ranked_plans(
     holidays_data: list[dict],
     year: int,
     constraints: UserConstraints,
-    top_n: int = 3,
+    top_n: int = 10,
 ) -> list[LeavePlan]:
     optimizer = HolidayOptimizer(holidays_data, year)
     return optimizer.optimize(constraints=constraints, top_n=top_n)
