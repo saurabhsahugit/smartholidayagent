@@ -51,7 +51,13 @@ def test_generate_ranked_plans_returns_ranked_options():
         preferred_month_labels=["April"],
     )
 
-    plans = generate_ranked_plans(sample_holidays_2026(), 2026, constraints, top_n=3)
+    plans = generate_ranked_plans(
+        sample_holidays_2026(),
+        2026,
+        constraints,
+        top_n=3,
+        as_of=date(2026, 3, 1),
+    )
 
     assert plans
     assert len(plans) <= 3
@@ -65,7 +71,13 @@ def test_format_plan_summary_returns_ui_friendly_strings():
         max_window_days=7,
         preferred_month_labels=["April"],
     )
-    plan = generate_ranked_plans(sample_holidays_2026(), 2026, constraints, top_n=1)[0]
+    plan = generate_ranked_plans(
+        sample_holidays_2026(),
+        2026,
+        constraints,
+        top_n=1,
+        as_of=date(2026, 3, 1),
+    )[0]
 
     summary = format_plan_summary(plan)
 

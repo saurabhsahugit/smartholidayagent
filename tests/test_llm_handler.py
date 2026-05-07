@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 from src.llm_handler import HolidayLLMHandler
 from src.optimizer import UserConstraints
@@ -74,11 +75,14 @@ def test_create_chat_completion_returns_direct_response_without_tool_call():
         holidays_data=sample_holidays_2026(),
         year=2026,
         region="england-and-wales",
+        current_date=date(2026, 3, 1),
     )
 
     assert result == "Here is a direct answer."
     assert len(client.chat.completions.calls) == 1
     assert client.chat.completions.calls[0]["tools"]
+    context_message = client.chat.completions.calls[0]["messages"][1]["content"]
+    assert "Today's date: 2026-03-01" in context_message
 
 
 def test_create_chat_completion_executes_optimizer_tool_and_returns_final_answer():
@@ -120,6 +124,7 @@ def test_create_chat_completion_executes_optimizer_tool_and_returns_final_answer
             max_leave_days=4, min_total_days_off=4, max_window_days=10
         ),
         top_n=3,
+        current_date=date(2026, 3, 1),
     )
 
     assert "Easter break" in result
@@ -127,5 +132,6 @@ def test_create_chat_completion_executes_optimizer_tool_and_returns_final_answer
 
     tool_message = client.chat.completions.calls[1]["messages"][-1]
     payload = json.loads(tool_message["content"])
+    assert payload["as_of"] == "2026-03-01"
     assert payload["constraints"]["max_leave_days"] == 2
     assert payload["plans"]
