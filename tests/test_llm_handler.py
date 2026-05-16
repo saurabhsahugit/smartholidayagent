@@ -138,7 +138,9 @@ def test_create_chat_completion_executes_optimizer_tool_and_returns_final_answer
 
 
 def test_create_chat_completion_includes_missing_holidays_instruction_in_context():
-    client = FakeClient([FakeResponse(FakeMessage(content="Please load holidays first."))])
+    client = FakeClient(
+        [FakeResponse(FakeMessage(content="Please load holidays first."))]
+    )
     handler = HolidayLLMHandler(client=client, model="test-model")
 
     result = handler.create_chat_completion(
