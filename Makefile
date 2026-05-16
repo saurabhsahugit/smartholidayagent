@@ -12,3 +12,4 @@ test:
 	pytest -q
 
 ci: lint test
+
