@@ -43,10 +43,11 @@ def generate_ranked_plans(
     holidays_data: list[dict],
     year: int,
     constraints: UserConstraints,
-    top_n: int = 3,
+    top_n: int = 10,
+    as_of: date | None = None,
 ) -> list[LeavePlan]:
     optimizer = HolidayOptimizer(holidays_data, year)
-    return optimizer.optimize(constraints=constraints, top_n=top_n)
+    return optimizer.optimize(constraints=constraints, top_n=top_n, as_of=as_of)
 
 
 def format_plan_dates(days: tuple[date, ...]) -> str:

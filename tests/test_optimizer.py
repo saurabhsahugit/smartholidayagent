@@ -50,6 +50,7 @@ def test_optimizer_returns_ranked_plans():
     plans = optimizer.optimize(
         UserConstraints(max_leave_days=3, min_total_days_off=4, max_window_days=10),
         top_n=3,
+        as_of=date(2026, 3, 1),
     )
 
     assert len(plans) == 3
@@ -63,6 +64,7 @@ def test_optimizer_finds_easter_bridge():
     plans = optimizer.optimize(
         UserConstraints(max_leave_days=2, min_total_days_off=5, max_window_days=7),
         top_n=5,
+        as_of=date(2026, 3, 1),
     )
 
     easter_plan = next(
@@ -91,6 +93,7 @@ def test_constraint_handler_respects_preferred_months_and_exclusions():
             max_window_days=7,
         ),
         top_n=5,
+        as_of=date(2026, 11, 1),
     )
 
     assert all(all(leave.month == 12 for leave in plan.leave_dates) for plan in plans)
@@ -103,6 +106,7 @@ def test_strategy_ranker_prefers_higher_ratio_then_longer_break():
     plans = optimizer.optimize(
         UserConstraints(max_leave_days=3, min_total_days_off=4, max_window_days=10),
         top_n=10,
+        as_of=date(2026, 3, 1),
     )
     ranked = StrategyRanker.rank(plans, top_n=2)
 
@@ -118,4 +122,22 @@ def test_constraint_handler_rejects_large_leave_requests():
     assert not ConstraintHandler.is_valid(
         plan,
         UserConstraints(max_leave_days=2, min_total_days_off=4, max_window_days=7),
+    )
+
+
+def test_optimizer_only_returns_forward_looking_plans():
+    optimizer = HolidayOptimizer(sample_holidays_2026(), 2026)
+
+    plans = optimizer.optimize(
+        UserConstraints(max_leave_days=3, min_total_days_off=4, max_window_days=10),
+        top_n=10,
+        as_of=date(2026, 11, 1),
+    )
+
+    assert plans
+    assert all(plan.start_date >= date(2026, 11, 1) for plan in plans)
+    assert all(
+        date(2026, 4, 3) not in plan.holiday_dates
+        and date(2026, 5, 4) not in plan.holiday_dates
+        for plan in plans
     )

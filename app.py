@@ -1,11 +1,15 @@
 import logging
 from datetime import date, datetime
+from time import perf_counter
+from uuid import uuid4
 
+import pandas as pd
 import streamlit as st
 
 import src.llm_handler
 from src.holidays import get_holidays
 from src.planning import build_constraints, format_plan_summary, generate_ranked_plans
+from src.telemetry import TELEMETRY_PATH, build_chat_event, log_event
 
 
 # Configure logging
@@ -42,6 +46,9 @@ if "holidays_data" not in st.session_state:
 
 if "excluded_leave_dates" not in st.session_state:
     st.session_state.excluded_leave_dates = []
+
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid4())
 
 # In the session state initialization block:
 if "llm_handler" not in st.session_state:
@@ -150,7 +157,7 @@ if st.session_state.holidays_data:
     )
 
 # Create two columns: chat on left, holidays on right
-col1, col2 = st.columns([2, 1])
+col1, col2, col3 = st.columns([5, 2, 1])
 
 
 def generate_response(user_input: str, holidays_data: dict) -> str:
@@ -222,23 +229,18 @@ with col1:
     chat_container = st.container(height=500)
     with chat_container:
         if not st.session_state.messages:
-            st.info(
-                """
+            """
             👋 **Welcome!** I'm your Smart Holiday Agent.
 
             Ask me things like:
             - "What holidays are coming up?"
             - "When is the next bank holiday?"
-            - "Show me all holidays in 2026"
-
-            *Note: LLM integration coming in Phase 4!*
-            """
-            )
+            - "Show me all holidays in 2026"""
         else:
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-
+with col1:
     # Chat input
     if prompt := st.chat_input("Ask about UK holidays..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -255,36 +257,37 @@ with col1:
                 region="england-and-wales",
                 planner_constraints=planner_constraints,
                 top_n=top_n,
+                current_date=date.today(),
             )
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
 
 # Right column: Holiday Display
+# with col2:
+#     st.subheader("📈 Top Leave Strategies")
+
+#     if recommended_plans:
+#         for index, plan in enumerate(recommended_plans, start=1):
+#             details = format_plan_summary(plan)
+#             with st.container(border=True):
+#                 st.markdown(
+#                     f"**Option {index}: {details['total_days_off']} days off, "
+#                     f"{details['leave_days_used']} leave day(s)**"
+#                 )
+#                 st.caption(details["date_range"])
+#                 metric_columns = st.columns(3)
+#                 metric_columns[0].metric("Efficiency", details["efficiency_ratio"])
+#                 metric_columns[1].metric("Leave used", details["leave_days_used"])
+#                 metric_columns[2].metric("Weekend days", details["weekend_count"])
+#                 st.markdown(f"**Take leave:** {details['leave_dates']}")
+#                 st.markdown(f"**Public holidays included:** {details['holiday_dates']}")
+#     elif st.session_state.holidays_data:
+#         st.info("No plans matched the current strategy filters. Try relaxing them.")
+#     else:
+#         st.info("Load holidays to generate ranked leave strategies.")
+
 with col2:
-    st.subheader("📈 Top Leave Strategies")
-
-    if recommended_plans:
-        for index, plan in enumerate(recommended_plans, start=1):
-            details = format_plan_summary(plan)
-            with st.container(border=True):
-                st.markdown(
-                    f"**Option {index}: {details['total_days_off']} days off, "
-                    f"{details['leave_days_used']} leave day(s)**"
-                )
-                st.caption(details["date_range"])
-                metric_columns = st.columns(3)
-                metric_columns[0].metric("Efficiency", details["efficiency_ratio"])
-                metric_columns[1].metric("Leave used", details["leave_days_used"])
-                metric_columns[2].metric("Weekend days", details["weekend_count"])
-                st.markdown(f"**Take leave:** {details['leave_dates']}")
-                st.markdown(f"**Public holidays included:** {details['holiday_dates']}")
-    elif st.session_state.holidays_data:
-        st.info("No plans matched the current strategy filters. Try relaxing them.")
-    else:
-        st.info("Load holidays to generate ranked leave strategies.")
-
-    st.divider()
     st.subheader(f"🎉 Holidays {selected_year}")
 
     if st.session_state.holidays_data:
