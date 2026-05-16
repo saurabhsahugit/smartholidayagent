@@ -1,11 +1,15 @@
 import logging
 from datetime import date, datetime
+from time import perf_counter
+from uuid import uuid4
 
+import pandas as pd
 import streamlit as st
 
 import src.llm_handler
 from src.holidays import get_holidays
 from src.planning import build_constraints, format_plan_summary, generate_ranked_plans
+from src.telemetry import TELEMETRY_PATH, build_chat_event, log_event
 
 
 # Configure logging
@@ -42,6 +46,9 @@ if "holidays_data" not in st.session_state:
 
 if "excluded_leave_dates" not in st.session_state:
     st.session_state.excluded_leave_dates = []
+
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid4())
 
 # In the session state initialization block:
 if "llm_handler" not in st.session_state:
