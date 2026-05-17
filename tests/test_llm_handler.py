@@ -129,3 +129,20 @@ def test_create_chat_completion_executes_optimizer_tool_and_returns_final_answer
     payload = json.loads(tool_message["content"])
     assert payload["constraints"]["max_leave_days"] == 2
     assert payload["plans"]
+
+
+def test_create_chat_completion_includes_missing_holidays_instruction_in_context():
+    client = FakeClient([FakeResponse(FakeMessage(content="Please load holidays first."))])
+    handler = HolidayLLMHandler(client=client, model="test-model")
+
+    result = handler.create_chat_completion(
+        messages=[{"role": "user", "content": "What should I book for May?"}],
+        holidays_data=None,
+        year=2026,
+        region="england-and-wales",
+    )
+
+    assert "Please load holidays first." == result
+    first_call_messages = client.chat.completions.calls[0]["messages"]
+    context_message = first_call_messages[1]["content"]
+    assert "No holidays data is currently loaded." in context_message
