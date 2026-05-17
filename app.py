@@ -1,11 +1,14 @@
 import logging
 from datetime import date, datetime
+from time import perf_counter
 
+import pandas as pd
 import streamlit as st
 
 import src.llm_handler
 from src.holidays import get_holidays
 from src.planning import build_constraints, format_plan_summary, generate_ranked_plans
+from src.telemetry import TELEMETRY_PATH, build_chat_event, log_event
 
 
 # Configure logging
@@ -189,6 +192,7 @@ with col1:
         else:
             max_history_messages = 12
             recent_messages = st.session_state.messages[-max_history_messages:]
+            start = perf_counter()
             response = st.session_state.llm_handler.create_chat_completion(
                 messages=recent_messages,
                 holidays_data=st.session_state.holidays_data,
@@ -197,6 +201,19 @@ with col1:
                 planner_constraints=planner_constraints,
                 top_n=top_n,
             )
+            latency_ms = int((perf_counter() - start) * 1000)
+            tool_called = "get_ranked_holiday_strategies" in response
+            event = build_chat_event(
+                prompt=prompt,
+                response=response,
+                latency_ms=latency_ms,
+                history_count_sent=len(recent_messages),
+                has_holidays_data=bool(st.session_state.holidays_data),
+                year_selected=st.session_state.selected_year,
+                tool_called=tool_called,
+                planner_constraints=planner_constraints,
+            )
+            log_event(event)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
@@ -258,3 +275,27 @@ with col2:
 st.divider()
 st.caption("Built with ❤️ using Streamlit and UK Government Data")
 st.caption("Data source: gov.uk/bank-holidays | LLM integration enabled")
+
+st.divider()
+st.subheader("🧪 AI Telemetry Snapshot")
+if TELEMETRY_PATH.exists():
+    telemetry_df = pd.read_csv(TELEMETRY_PATH)
+    if not telemetry_df.empty:
+        latest = telemetry_df.tail(50).copy()
+        st.metric("Recent avg latency (ms)", int(latest["latency_ms"].mean()))
+        st.metric("Recent avg quality score", round(latest["q_total"].mean(), 2))
+        st.dataframe(
+            latest[
+                [
+                    "timestamp_utc",
+                    "latency_ms",
+                    "q_completeness",
+                    "q_constraint_adherence",
+                    "q_actionable",
+                    "q_total",
+                ]
+            ].tail(10),
+            use_container_width=True,
+        )
+else:
+    st.info("No telemetry events yet. Ask a question in chat to generate metrics.")
