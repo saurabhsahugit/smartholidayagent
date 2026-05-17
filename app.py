@@ -8,7 +8,7 @@ import streamlit as st
 
 import src.llm_handler
 from src.holidays import get_holidays
-from src.planning import build_constraints, format_plan_summary, generate_ranked_plans
+from src.planning import build_constraints, generate_ranked_plans
 from src.telemetry import TELEMETRY_PATH, build_chat_event, log_event
 
 
@@ -286,4 +286,3 @@ if TELEMETRY_PATH.exists():
         )
 else:
     st.info("No telemetry events yet. Ask a question in chat to generate metrics.")
-

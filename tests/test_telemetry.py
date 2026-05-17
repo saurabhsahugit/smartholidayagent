@@ -28,7 +28,9 @@ def test_score_response_quality_flags_excluded_dates_in_adherence():
 
 
 def test_build_chat_event_and_log_event(tmp_path):
-    constraints = UserConstraints(max_leave_days=4, min_total_days_off=5, max_window_days=12)
+    constraints = UserConstraints(
+        max_leave_days=4, min_total_days_off=5, max_window_days=12
+    )
     event = build_chat_event(
         session_id="test-session",
         prompt="Help me around Easter",
