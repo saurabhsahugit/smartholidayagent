@@ -1,0 +1,4 @@
+event_id,timestamp_utc,session_id,year_selected,region,has_holidays_data,history_count_sent,prompt_len_chars,response_len_chars,tool_called,tool_name,latency_ms,error_type,q_completeness,q_constraint_adherence,q_actionable,q_total
+97584513-2fd6-4aba-ab90-1ca10d3c9a4e,2026-05-17T20:51:59.821059+00:00,28a12633-2797-498f-bd0c-cd4cf2ca965e,2026,england-and-wales,True,1,30,126,False,,2402,,0,2,0,2
+5d53aee1-44eb-464b-b4bc-8cc5ea35bfce,2026-05-17T20:52:31.561947+00:00,28a12633-2797-498f-bd0c-cd4cf2ca965e,2026,england-and-wales,True,3,47,988,False,,7304,,2,2,2,6
+167edccf-6667-4397-ab9b-cad1c810a56c,2026-05-17T20:53:16.959755+00:00,28a12633-2797-498f-bd0c-cd4cf2ca965e,2026,england-and-wales,True,5,54,976,False,,8327,,2,2,2,6

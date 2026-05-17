@@ -159,68 +159,6 @@ if st.session_state.holidays_data:
 # Create two columns: chat on left, holidays on right
 col1, col2, col3 = st.columns([5, 2, 1])
 
-
-def generate_response(user_input: str, holidays_data: dict) -> str:
-    """
-    Generate a response to user input (basic implementation).
-    In Phase 4, this will be replaced with LLM integration.
-
-    Args:
-        user_input (str): User's message
-        holidays_data (dict): Holiday data
-
-    Returns:
-        str: Response message
-    """
-    user_input_lower = user_input.lower()
-
-    logger.info(f"All events: {holidays_data}")
-    events = holidays_data
-
-    # Check if holidays data is loaded
-    if not holidays_data:
-        return "⚠️ Clicking the '🔄 Load Holidays' button to reload!"
-    else:
-        events = holidays_data
-
-    # Simple keyword matching for now
-    if any(word in user_input_lower for word in ["next", "upcoming", "soon"]):
-        today = datetime.now().date()
-        upcoming = [
-            event
-            for event in events
-            if datetime.strptime(event["date"], "%Y-%m-%d").date() > today
-        ]
-        if upcoming:
-            next_holiday = upcoming[0]
-            date_obj = datetime.strptime(next_holiday["date"], "%Y-%m-%d")
-            return f"🎉 The next bank holiday is **{next_holiday['title']}** on {date_obj.strftime('%A, %d %B %Y')}!"
-        else:
-            return "No upcoming holidays found in the loaded data."
-
-    elif any(word in user_input_lower for word in ["all", "list", "show"]):
-        response = "📅 Here are all the holidays:\n\n"
-        for event in events:
-            date_obj = datetime.strptime(event["date"], "%Y-%m-%d")
-            response += f"- **{event['title']}**: {date_obj.strftime('%d %B %Y')}\n"
-        return response
-
-    elif "how many" in user_input_lower:
-        return f"📊 There are **{len(events)}** bank holidays in the loaded data."
-
-    else:
-        return """
-            I'm still learning! 🤖
-
-            Right now I can answer:
-            - "What's the next holiday?"
-            - "Show me all holidays"
-            - "How many holidays are there?"
-
-            *In Phase 4, I'll be powered by AI and can answer much more!*
-            """
-
-
 # Left column: Chat Interface
 with col1:
     st.subheader("💬 Chat with Holiday Agent")
@@ -250,42 +188,46 @@ with col1:
                 "your environment and reload the app."
             )
         else:
-            response = st.session_state.llm_handler.create_chat_completion(
-                messages=st.session_state.messages,
-                holidays_data=st.session_state.holidays_data,
-                year=st.session_state.selected_year,
-                region="england-and-wales",
-                planner_constraints=planner_constraints,
-                top_n=top_n,
-                current_date=date.today(),
-            )
+            max_history_messages = 12
+            recent_messages = st.session_state.messages[-max_history_messages:]
+            start = perf_counter()
+            error_type = ""
+            try:
+                response = st.session_state.llm_handler.create_chat_completion(
+                    messages=recent_messages,
+                    holidays_data=st.session_state.holidays_data,
+                    year=st.session_state.selected_year,
+                    region="england-and-wales",
+                    planner_constraints=planner_constraints,
+                    top_n=top_n,
+                )
+            except Exception as error:
+                error_type = type(error).__name__
+                response = "I hit an issue generating a response. Please try again."
 
+            latency_ms = int((perf_counter() - start) * 1000)
+            tool_name = (
+                "get_ranked_holiday_strategies"
+                if "get_ranked_holiday_strategies" in response
+                else ""
+            )
+            event = build_chat_event(
+                session_id=st.session_state.session_id,
+                prompt=prompt,
+                response=response,
+                latency_ms=latency_ms,
+                history_count_sent=len(recent_messages),
+                has_holidays_data=bool(st.session_state.holidays_data),
+                year_selected=st.session_state.selected_year,
+                tool_called=bool(tool_name),
+                tool_name=tool_name,
+                planner_constraints=planner_constraints,
+                error_type=error_type,
+                # current_date=date.today(),
+            )
+            log_event(event)
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
-
-# Right column: Holiday Display
-# with col2:
-#     st.subheader("📈 Top Leave Strategies")
-
-#     if recommended_plans:
-#         for index, plan in enumerate(recommended_plans, start=1):
-#             details = format_plan_summary(plan)
-#             with st.container(border=True):
-#                 st.markdown(
-#                     f"**Option {index}: {details['total_days_off']} days off, "
-#                     f"{details['leave_days_used']} leave day(s)**"
-#                 )
-#                 st.caption(details["date_range"])
-#                 metric_columns = st.columns(3)
-#                 metric_columns[0].metric("Efficiency", details["efficiency_ratio"])
-#                 metric_columns[1].metric("Leave used", details["leave_days_used"])
-#                 metric_columns[2].metric("Weekend days", details["weekend_count"])
-#                 st.markdown(f"**Take leave:** {details['leave_dates']}")
-#                 st.markdown(f"**Public holidays included:** {details['holiday_dates']}")
-#     elif st.session_state.holidays_data:
-#         st.info("No plans matched the current strategy filters. Try relaxing them.")
-#     else:
-#         st.info("Load holidays to generate ranked leave strategies.")
 
 with col2:
     st.subheader(f"🎉 Holidays {selected_year}")
@@ -319,4 +261,29 @@ with col2:
 # Footer
 st.divider()
 st.caption("Built with ❤️ using Streamlit and UK Government Data")
-st.caption("Data source: gov.uk/bank-holidays | LLM integration in progress")
+st.caption("Data source: gov.uk/bank-holidays | LLM integration enabled")
+
+st.divider()
+st.subheader("🧪 AI Telemetry Snapshot")
+if TELEMETRY_PATH.exists():
+    telemetry_df = pd.read_csv(TELEMETRY_PATH)
+    if not telemetry_df.empty:
+        latest = telemetry_df.tail(50).copy()
+        st.metric("Recent avg latency (ms)", int(latest["latency_ms"].mean()))
+        st.metric("Recent avg quality score", round(latest["q_total"].mean(), 2))
+        st.dataframe(
+            latest[
+                [
+                    "timestamp_utc",
+                    "latency_ms",
+                    "q_completeness",
+                    "q_constraint_adherence",
+                    "q_actionable",
+                    "q_total",
+                ]
+            ].tail(10),
+            use_container_width=True,
+        )
+else:
+    st.info("No telemetry events yet. Ask a question in chat to generate metrics.")
+

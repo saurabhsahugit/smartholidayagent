@@ -24,7 +24,9 @@ Example response 1:
 <img width="2008" height="906" alt="image" src="https://github.com/user-attachments/assets/78f17106-b58a-4c47-b610-704897c28fcf" />
 Example response 2:
 <img width="2008" height="906" alt="image" src="https://github.com/user-attachments/assets/d423233d-fd21-4caa-ad57-29587f082d69" />
-
+Telemetry Performance stats:
+<img width="2008" height="906" alt="image" src="https://github.com/user-attachments/assets/
+![alt text](image-2.png)
 
 **High-level flow:**
 
