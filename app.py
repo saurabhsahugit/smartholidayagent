@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pandas as pd
 import streamlit as st
+from pandas.errors import EmptyDataError, ParserError
 
 import src.llm_handler
 from src.holidays import get_holidays
@@ -266,23 +267,114 @@ st.caption("Data source: gov.uk/bank-holidays | LLM integration enabled")
 st.divider()
 st.subheader("🧪 AI Telemetry Snapshot")
 if TELEMETRY_PATH.exists():
-    telemetry_df = pd.read_csv(TELEMETRY_PATH)
+    try:
+        telemetry_df = pd.read_csv(TELEMETRY_PATH)
+    except (EmptyDataError, ParserError):
+        telemetry_df = pd.DataFrame()
+
     if not telemetry_df.empty:
-        latest = telemetry_df.tail(50).copy()
-        st.metric("Recent avg latency (ms)", int(latest["latency_ms"].mean()))
-        st.metric("Recent avg quality score", round(latest["q_total"].mean(), 2))
-        st.dataframe(
-            latest[
-                [
-                    "timestamp_utc",
-                    "latency_ms",
-                    "q_completeness",
-                    "q_constraint_adherence",
-                    "q_actionable",
-                    "q_total",
-                ]
-            ].tail(10),
-            use_container_width=True,
-        )
+        latest = telemetry_df.tail(200).copy()
+        if "timestamp_utc" in latest.columns:
+            latest["timestamp_utc"] = pd.to_datetime(
+                latest["timestamp_utc"], errors="coerce", utc=True
+            )
+            latest["event_date"] = latest["timestamp_utc"].dt.date
+
+        for numeric_col in [
+            "latency_ms",
+            "q_total",
+            "q_completeness",
+            "q_constraint_adherence",
+            "q_actionable",
+            "tool_called",
+        ]:
+            if numeric_col in latest.columns:
+                latest[numeric_col] = pd.to_numeric(
+                    latest[numeric_col], errors="coerce"
+                )
+
+        top_metrics = st.columns(4)
+
+        if "latency_ms" in latest.columns:
+            avg_latency = latest["latency_ms"].dropna().mean()
+            p95_latency = latest["latency_ms"].dropna().quantile(0.95)
+            top_metrics[0].metric(
+                "Avg latency (ms)", int(avg_latency) if pd.notna(avg_latency) else "N/A"
+            )
+            top_metrics[1].metric(
+                "P95 latency (ms)", int(p95_latency) if pd.notna(p95_latency) else "N/A"
+            )
+        else:
+            top_metrics[0].metric("Avg latency (ms)", "N/A")
+            top_metrics[1].metric("P95 latency (ms)", "N/A")
+
+        if "q_total" in latest.columns:
+            avg_quality = latest["q_total"].dropna().mean()
+            top_metrics[2].metric(
+                "Avg quality score",
+                round(avg_quality, 2) if pd.notna(avg_quality) else "N/A",
+            )
+        else:
+            top_metrics[2].metric("Avg quality score", "N/A")
+
+        if "tool_called" in latest.columns:
+            tool_rate = latest["tool_called"].fillna(0).mean() * 100
+            top_metrics[3].metric("Tool usage rate", f"{tool_rate:.1f}%")
+        else:
+            top_metrics[3].metric("Tool usage rate", "N/A")
+
+        if {"event_date", "latency_ms"}.issubset(latest.columns):
+            latency_trend = (
+                latest.dropna(subset=["event_date", "latency_ms"])
+                .groupby("event_date", as_index=False)["latency_ms"]
+                .agg(["median", lambda x: x.quantile(0.95)])
+                .reset_index()
+            )
+            latency_trend.columns = ["event_date", "p50_latency", "p95_latency"]
+            st.caption("Latency trend (P50 / P95 by day)")
+            st.line_chart(latency_trend.set_index("event_date"))
+
+        quality_cols = [
+            "q_completeness",
+            "q_constraint_adherence",
+            "q_actionable",
+            "q_total",
+        ]
+        available_quality_cols = [col for col in quality_cols if col in latest.columns]
+        if {"event_date", "q_total"}.issubset(latest.columns):
+            quality_trend = (
+                latest.dropna(subset=["event_date", "q_total"])
+                .groupby("event_date", as_index=False)["q_total"]
+                .mean()
+            )
+            st.caption("Quality trend (average q_total by day)")
+            st.line_chart(quality_trend.set_index("event_date"))
+
+        if available_quality_cols:
+            st.caption("Quality signal distribution (last 200 events)")
+            st.bar_chart(latest[available_quality_cols].mean(numeric_only=True))
+
+        preview_columns = [
+            "timestamp_utc",
+            "latency_ms",
+            "q_completeness",
+            "q_constraint_adherence",
+            "q_actionable",
+            "q_total",
+            "tool_called",
+            "error_type",
+        ]
+        available_preview_columns = [
+            col for col in preview_columns if col in latest.columns
+        ]
+        if available_preview_columns:
+            st.dataframe(
+                latest[available_preview_columns].tail(10),
+                use_container_width=True,
+            )
+        else:
+            st.info("Telemetry file exists but does not include preview fields yet.")
+    else:
+        st.info("Telemetry file exists but has no readable rows yet.")
 else:
     st.info("No telemetry events yet. Ask a question in chat to generate metrics.")

@@ -10,6 +10,25 @@ from uuid import uuid4
 from src.optimizer import UserConstraints
 
 TELEMETRY_PATH = Path("data/telemetry_events.csv")
+TELEMETRY_FIELDS = [
+    "event_id",
+    "timestamp_utc",
+    "session_id",
+    "year_selected",
+    "region",
+    "has_holidays_data",
+    "history_count_sent",
+    "prompt_len_chars",
+    "response_len_chars",
+    "tool_called",
+    "tool_name",
+    "latency_ms",
+    "error_type",
+    "q_completeness",
+    "q_constraint_adherence",
+    "q_actionable",
+    "q_total",
+]
 
 
 @dataclass(frozen=True)
@@ -98,13 +117,15 @@ def build_chat_event(
 
 def log_event(event: dict, file_path: Path = TELEMETRY_PATH) -> None:
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_exists = file_path.exists()
+    if file_path.exists():
+        _migrate_legacy_csv_if_needed(file_path)
 
     with file_path.open("a", newline="", encoding="utf-8") as file_obj:
-        writer = csv.DictWriter(file_obj, fieldnames=list(event.keys()))
-        if not file_exists:
+        writer = csv.DictWriter(file_obj, fieldnames=TELEMETRY_FIELDS)
+        if file_path.stat().st_size == 0:
             writer.writeheader()
-        writer.writerow(event)
+        row = {field: event.get(field, "") for field in TELEMETRY_FIELDS}
+        writer.writerow(row)
 
 
 def _extract_leave_days(text: str) -> int | None:
@@ -112,3 +133,20 @@ def _extract_leave_days(text: str) -> int | None:
     if not matches:
         return None
     return int(matches[0])
+
+
+def _migrate_legacy_csv_if_needed(file_path: Path) -> None:
+    with file_path.open("r", newline="", encoding="utf-8") as file_obj:
+        reader = csv.DictReader(file_obj)
+        existing_fields = reader.fieldnames or []
+        rows = list(reader)
+
+    if all(field in existing_fields for field in TELEMETRY_FIELDS):
+        return
+
+    with file_path.open("w", newline="", encoding="utf-8") as file_obj:
+        writer = csv.DictWriter(file_obj, fieldnames=TELEMETRY_FIELDS)
+        writer.writeheader()
+        for old_row in rows:
+            migrated_row = {field: old_row.get(field, "") for field in TELEMETRY_FIELDS}
+            writer.writerow(migrated_row)
