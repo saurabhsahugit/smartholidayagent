@@ -330,7 +330,12 @@ if TELEMETRY_PATH.exists():
                 .agg(["median", lambda x: x.quantile(0.95)])
                 .reset_index()
             )
-            latency_trend.columns = ["event_date", "p50_latency", "p95_latency"]
+            latency_trend.columns = [
+                "event_date",
+                "latency_ms",
+                "p50_latency",
+                "p95_latency",
+            ]
             st.caption("Latency trend (P50 / P95 by day)")
             st.line_chart(latency_trend.set_index("event_date"))
 
