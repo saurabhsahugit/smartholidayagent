@@ -1,0 +1,4 @@
+case_id,prompt,response,max_leave_days,excluded_leave_dates,min_q_total
+spring_easter_balanced,Help me plan around Easter with max 2 leave days,"Take leave on 2026-04-07 to extend Easter. You'll get 5 days off with 2 leave days and a strong ratio.",2,,4
+excluded_date_violation,Plan a Christmas break but do not use 2026-12-24 as leave,"Take leave on 2026-12-24 and 2026-12-29 for a long festive break.",5,2026-12-24,3
+generic_low_value,Any ideas for holidays?,"There are holidays throughout the year.",3,,2
