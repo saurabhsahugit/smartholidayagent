@@ -337,7 +337,9 @@ if TELEMETRY_PATH.exists():
                 "p95_latency",
             ]
             st.caption("Latency trend (P50 / P95 by day)")
-            st.line_chart(latency_trend.set_index("event_date"))
+            st.line_chart(
+                latency_trend, x="event_date", y=["p50_latency", "p95_latency"]
+            )
 
         quality_cols = [
             "q_completeness",
