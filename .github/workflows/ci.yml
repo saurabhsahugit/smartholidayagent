@@ -32,3 +32,6 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: Run replay eval
+        run: PYTHONPATH=. python evals/run_quality_eval.py
