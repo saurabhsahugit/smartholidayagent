@@ -68,6 +68,9 @@ class HolidayLLMHandler:
         - Use emojis sparingly (🎉 for holidays, 📅 for dates, 💡 for tips)
         - If you don't have enough information, ask the user for preferences
         - Focus on England & Wales bank holidays
+        - Use the runtime date supplied in the context as the source of truth for "today".
+        - For future-looking planning, never recommend leave dates or holidays before today's date unless the user explicitly asks for historical information.
+        - If the user asks about a month or holiday that has already passed, say it has passed and suggest the next relevant future option.
 
         Example responses:
         User: "Help me plan around Easter"
@@ -115,8 +118,13 @@ class HolidayLLMHandler:
                 f"Today's date: {today.isoformat()}",
                 f"Planning year: {year}",
                 f"Region: {region or 'england-and-wales'}",
-                "Use today's date above when the user asks about today, current "
-                "dates, upcoming holidays, or future-looking leave plans.",
+                "Treat today's date above as the authoritative runtime date, "
+                "not the model's training date or any remembered date.",
+                "For upcoming or future-looking leave plans, do not recommend "
+                f"leave dates or holidays before {today.isoformat()} unless the "
+                "user explicitly asks for historical information.",
+                "If a holiday or requested month has already passed, state that "
+                "clearly and recommend the next relevant future option.",
                 self._format_constraints_for_context(planner_constraints, top_n),
             ]
 
@@ -124,7 +132,7 @@ class HolidayLLMHandler:
             if holidays_data:
                 context_parts.append(
                     "Holidays data from the UK government website:\n"
-                    f"{self._format_holidays_for_context(holidays_data)}"
+                    f"{self._format_holidays_for_context(holidays_data, today)}"
                 )
             else:
                 context_parts.append(
@@ -195,7 +203,9 @@ class HolidayLLMHandler:
             logger.error(f"Error calling LLM: {e}")
             return f"⚠️ Sorry, I encountered an error: {str(e)}\n\nPlease check your API key and internet connection."
 
-    def _format_holidays_for_context(self, holidays_data: List[Dict[str, Any]]) -> str:
+    def _format_holidays_for_context(
+        self, holidays_data: List[Dict[str, Any]], current_date: date | None = None
+    ) -> str:
         """
         Format holiday data into a readable string for the LLM.
 
@@ -204,6 +214,7 @@ class HolidayLLMHandler:
 
         Args:
             holidays_data: Dictionary containing holiday events
+            current_date: The current date to use as the reference point
 
         Returns:
             str: Formatted text describing all holidays
@@ -223,16 +234,28 @@ class HolidayLLMHandler:
         formatted = "UK Public Holidays (England & Wales):\n\n"
 
         for event in events:
-            date = event.get("date", "Unknown")
+            date_value = event.get("date", "Unknown")
             title = event.get("title", "Unknown")
             notes = event.get("notes", "")
             bunting = "🎊" if event.get("bunting", False) else ""
-
-            formatted += f"- {title}: {date} {bunting}\n"
+            status = self._holiday_status_for_context(date_value, current_date)
+            formatted += f"- {title}: {date_value} {status} {bunting}\n"
             if notes:
                 formatted += f"  Note: {notes}\n"
 
         return formatted
+
+    @staticmethod
+    def _holiday_status_for_context(date_value: str, current_date: date | None) -> str:
+        if current_date is None:
+            return ""
+        try:
+            holiday_date = datetime.strptime(date_value, "%Y-%m-%d").date()
+        except ValueError:
+            return ""
+        if holiday_date < current_date:
+            return "(past - do not recommend for future planning)"
+        return "(upcoming)"
 
     def stream_chat_completion(
         self, messages: List[Dict[str, str]], holidays_data: List[Dict[str, Any]] = None

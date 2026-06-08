@@ -154,3 +154,38 @@ def test_create_chat_completion_includes_missing_holidays_instruction_in_context
     first_call_messages = client.chat.completions.calls[0]["messages"]
     context_message = first_call_messages[1]["content"]
     assert "No holidays data is currently loaded." in context_message
+
+
+def test_create_chat_completion_marks_past_holidays_and_blocks_future_recommendations():
+    client = FakeClient([FakeResponse(FakeMessage(content="Here is a direct answer."))])
+    handler = HolidayLLMHandler(client=client, model="test-model")
+
+    handler.create_chat_completion(
+        messages=[{"role": "user", "content": "What holiday should I book next?"}],
+        holidays_data=sample_holidays_2026(),
+        year=2026,
+        region="england-and-wales",
+        current_date=date(2026, 6, 8),
+    )
+
+    context_message = client.chat.completions.calls[0]["messages"][1]["content"]
+    assert "Today's date: 2026-06-08" in context_message
+    assert "authoritative runtime date" in context_message
+    assert (
+        "do not recommend leave dates or holidays before 2026-06-08" in context_message
+    )
+    assert (
+        "Good Friday: 2026-04-03 (past - do not recommend for future planning)"
+        in context_message
+    )
+
+
+def test_format_holidays_for_context_marks_upcoming_holidays():
+    handler = HolidayLLMHandler(client=FakeClient([]), model="test-model")
+
+    context = handler._format_holidays_for_context(
+        sample_holidays_2026(), current_date=date(2026, 3, 1)
+    )
+
+    assert "Good Friday: 2026-04-03 (upcoming)" in context
+    assert "Easter Monday: 2026-04-06 (upcoming)" in context
