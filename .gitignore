@@ -34,6 +34,12 @@ venv-smartholidayagent/
 .env
 .env.local
 
+dependency files
+deployment/terraform/.terraform/
+deployment/terraform/terraform.tfstate
+deployment/terraform/terraform.tfstate.backup
+deployment/terraform/terraform.tfvars
+
 # IDE
 .vscode/
 .idea/

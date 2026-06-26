@@ -1,0 +1,4 @@
+aws_region           = "eu-west-2"
+project_name         = "smart-holiday-agent"
+app_image_identifier = "814406306242.dkr.ecr.eu-west-2.amazonaws.com/smart-holiday-agent:latest"
+openai_api_key       = "YOUR_OPENAI_API_KEY_HERE"
