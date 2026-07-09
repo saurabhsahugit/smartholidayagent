@@ -1,5 +1,5 @@
 variable "aws_region" {
-  description = "AWS region for the MVP deployment. App Runner and ECR must use the same region."
+  description = "AWS region for the MVP deployment. ECS Express Mode and ECR must use the same region."
   type        = string
   default     = "eu-west-2"
 }
@@ -25,6 +25,36 @@ variable "streamlit_port" {
   description = "Container port that Streamlit listens on."
   type        = string
   default     = "8080"
+}
+
+variable "ecs_cpu" {
+  description = "ECS Express Mode task CPU units. 256 is the smallest Fargate-compatible MVP size."
+  type        = string
+  default     = "256"
+}
+
+variable "ecs_memory" {
+  description = "ECS Express Mode task memory in MiB. 512 is the smallest Fargate-compatible MVP size."
+  type        = string
+  default     = "512"
+}
+
+variable "min_task_count" {
+  description = "Minimum number of ECS tasks to keep running for the public MVP."
+  type        = number
+  default     = 1
+}
+
+variable "max_task_count" {
+  description = "Maximum number of ECS tasks for the public MVP."
+  type        = number
+  default     = 2
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days for container logs."
+  type        = number
+  default     = 7
 }
 
 variable "tags" {

@@ -9,6 +9,7 @@ exclude = '''
   | venv
   | build
   | dist
+  |deployment/terraform/.terraform/providers/registry.terraform.io
 )/
 '''
 
