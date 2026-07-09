@@ -1,23 +1,22 @@
-output "ecr_repository_url" {
-  value = aws_ecr_repository.app.repository_url
+data "aws_iam_policy_document" "ecs_tasks_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
 }
 
-output "openai_secret_arn" {
-  value = aws_secretsmanager_secret.openai_api_key3.arn
-}
+data "aws_iam_policy_document" "ecs_infrastructure_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
 
-output "service_url" {
-  value = aws_lb.app.dns_name
-}
-
-data "aws_vpc" "default" {
-  default = true
-}
-
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
+    principals {
+      type        = "Service"
+      identifiers = ["ecs.amazonaws.com"]
+    }
   }
 }
 
@@ -32,210 +31,117 @@ resource "aws_ecr_repository" "app" {
   tags = var.tags
 }
 
-resource "aws_secretsmanager_secret" "openai_api_key3" {
-  name                    = "${var.project_name}/openai_api_key3"
+resource "aws_secretsmanager_secret" "openai_api_key" {
+  name                    = "${var.project_name}/openai-api-key"
   recovery_window_in_days = 7
 
   tags = var.tags
 }
 
 resource "aws_secretsmanager_secret_version" "openai_api_key_value" {
-  secret_id     = aws_secretsmanager_secret.openai_api_key3.id
+  secret_id     = aws_secretsmanager_secret.openai_api_key.id
   secret_string = var.openai_api_key
 }
 
-resource "aws_iam_role" "ecs_task_execution" {
-  name = "${var.project_name}-ecs-task-execution"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = ["ecs-tasks.amazonaws.com"]
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/express/${var.project_name}"
+  retention_in_days = var.log_retention_days
 
   tags = var.tags
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-  role       = aws_iam_role.ecs_task_execution.name
+resource "aws_iam_role" "ecs_execution" {
+  name               = "${var.project_name}-ecs-execution"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution" {
+  role       = aws_iam_role.ecs_execution.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role" "ecs_infrastructure" {
+  name               = "${var.project_name}-ecs-infrastructure"
+  assume_role_policy = data.aws_iam_policy_document.ecs_infrastructure_assume_role.json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_infrastructure" {
+  role       = aws_iam_role.ecs_infrastructure.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices"
+}
+
+resource "aws_iam_role" "ecs_task" {
+  name               = "${var.project_name}-ecs-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+
+  tags = var.tags
+}
+
+data "aws_iam_policy_document" "openai_secret_access" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.openai_api_key.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_execution_secret_access" {
+  name   = "${var.project_name}-execution-secret-access"
+  role   = aws_iam_role.ecs_execution.id
+  policy = data.aws_iam_policy_document.openai_secret_access.json
+}
+
 resource "aws_iam_role_policy" "ecs_task_secret_access" {
-  name   = "${var.project_name}-ecs-secrets-access"
-  role   = aws_iam_role.ecs_task_execution.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = ["secretsmanager:GetSecretValue"]
-        Resource = [aws_secretsmanager_secret.openai_api_key3.arn]
-      }
-    ]
-  })
+  name   = "${var.project_name}-task-secret-access"
+  role   = aws_iam_role.ecs_task.id
+  policy = data.aws_iam_policy_document.openai_secret_access.json
 }
 
-resource "aws_ecs_cluster" "app" {
-  name = var.project_name
-}
+resource "aws_ecs_express_gateway_service" "app" {
+  service_name            = var.project_name
+  execution_role_arn      = aws_iam_role.ecs_execution.arn
+  infrastructure_role_arn = aws_iam_role.ecs_infrastructure.arn
+  task_role_arn           = aws_iam_role.ecs_task.arn
 
-resource "aws_lb" "app" {
-  name               = "${var.project_name}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = data.aws_subnets.default.ids
+  cpu                     = var.ecs_cpu
+  memory                  = var.ecs_memory
+  health_check_path       = "/"
+  wait_for_steady_state   = true
 
-  tags = var.tags
-}
+  primary_container {
+    image          = var.app_image_identifier
+    container_port = tonumber(var.streamlit_port)
 
-resource "aws_security_group" "alb" {
-  name        = "${var.project_name}-alb-sg"
-  description = "Allow HTTP to the application load balancer"
-  vpc_id      = data.aws_vpc.default.id
-
-  ingress {
-    description = "HTTP from anywhere"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = var.tags
-}
-
-resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.project_name}-ecs-sg"
-  description = "Allow App Runner traffic from ALB to ECS tasks"
-  vpc_id      = data.aws_vpc.default.id
-
-  ingress {
-    from_port       = tonumber(var.streamlit_port)
-    to_port         = tonumber(var.streamlit_port)
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = var.tags
-}
-
-resource "aws_lb_target_group" "app" {
-  name        = "${var.project_name}-tg"
-  port        = tonumber(var.streamlit_port)
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = data.aws_vpc.default.id
-
-  health_check {
-    path                = "/"
-    protocol            = "HTTP"
-    interval            = 10
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 5
-  }
-
-  tags = var.tags
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.app.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
-  }
-}
-
-resource "aws_cloudwatch_log_group" "ecs" {
-  name              = "/ecs/${var.project_name}"
-  retention_in_days = 14
-  tags              = var.tags
-}
-
-resource "aws_ecs_task_definition" "app" {
-  family                   = "${var.project_name}-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "app"
-      image     = var.app_image_identifier
-      essential = true
-
-      portMappings = [
-        {
-          containerPort = tonumber(var.streamlit_port)
-          protocol      = "tcp"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "OPENAI_API_KEY"
-          valueFrom = aws_secretsmanager_secret.openai_api_key3.arn
-        }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "app"
-        }
-      }
+    aws_logs_configuration {
+      log_group         = aws_cloudwatch_log_group.app.name
+      log_stream_prefix = "streamlit"
     }
-  ])
-}
 
-resource "aws_ecs_service" "app" {
-  name            = var.project_name
-  cluster         = aws_ecs_cluster.app.id
-  launch_type     = "FARGATE"
-  desired_count   = 1
-  task_definition = aws_ecs_task_definition.app.arn
+    environment {
+      name  = "STREAMLIT_SERVER_PORT"
+      value = var.streamlit_port
+    }
 
-  network_configuration {
-    subnets         = data.aws_subnets.default.ids
-    security_groups = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
+    environment {
+      name  = "STREAMLIT_SERVER_ADDRESS"
+      value = "0.0.0.0"
+    }
+
+    secret {
+      name       = "OPENAI_API_KEY"
+      value_from = aws_secretsmanager_secret.openai_api_key.arn
+    }
   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.app.arn
-    container_name   = "app"
-    container_port   = tonumber(var.streamlit_port)
+  scaling_target {
+    auto_scaling_metric       = "AVERAGE_CPU"
+    auto_scaling_target_value = 70
+    min_task_count            = var.min_task_count
+    max_task_count            = var.max_task_count
   }
 
-  depends_on = [aws_lb_listener.http]
+  tags = var.tags
 }
