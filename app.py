@@ -26,6 +26,18 @@ def configure_logging() -> None:
     )
 
 
+def load_holidays_years(years: list[int]) -> dict[int, list[dict]]:
+    loaded = {}
+    for year in years:
+        try:
+            loaded[year] = get_holidays(year, "england-and-wales")
+            logger.info(f"Preloaded holidays for {year}: {len(loaded[year])} events")
+        except Exception as error:
+            logger.warning(f"Unable to preload holidays for {year}: {error}")
+            loaded[year] = []
+    return loaded
+
+
 configure_logging()
 
 
@@ -43,7 +55,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "holidays_data" not in st.session_state:
-    st.session_state.holidays_data = None
+    st.session_state.holidays_data = {}
 
 if "excluded_leave_dates" not in st.session_state:
     st.session_state.excluded_leave_dates = []
@@ -58,6 +70,10 @@ if "llm_handler" not in st.session_state:
     except ValueError as e:
         st.session_state.llm_handler = None
         logger.warning(f"LLM handler not initialized: {e}")
+
+if "holidays_data" in st.session_state and not st.session_state.holidays_data:
+    st.session_state.holidays_data = load_holidays_years([2026, 2027])
+
 # Main page content
 st.title("🏖️ Smart Holiday Agent")
 st.markdown("### AI-Powered UK Holiday Planning Assistant")
@@ -73,62 +89,12 @@ with st.sidebar:
     )
     st.session_state.selected_year = selected_year
 
-    st.subheader("Holiday Strategy")
-    max_leave_days = st.slider("Max leave days", min_value=1, max_value=10, value=4)
-    min_total_days_off = st.slider(
-        "Minimum total days off", min_value=3, max_value=14, value=5
-    )
-    max_window_days = st.slider(
-        "Maximum break window", min_value=4, max_value=18, value=12
-    )
-    top_n = st.slider("Number of options", min_value=1, max_value=5, value=3)
-    preferred_month_labels = st.multiselect(
-        "Preferred months",
-        options=[
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-        ],
-        help="Leave blank to search the whole year.",
-    )
-    excluded_leave_dates = st.date_input(
-        "Unavailable leave date",
-        value=None,
-        min_value=date(selected_year, 1, 1),
-        max_value=date(selected_year, 12, 31),
-        help="Optional single date to exclude from leave plans.",
-    )
-
-    selected_excluded_dates = []
-    if excluded_leave_dates:
-        selected_excluded_dates = [excluded_leave_dates]
-
-    # Fetch holidays button
-    if st.button("🔄 Load Holidays", use_container_width=True):
-        with st.spinner("Fetching holiday data..."):
-            st.session_state.holidays_data = get_holidays(
-                selected_year, "england-and-wales"
-            )
-            logger.info(f"Holidays data loaded for {selected_year}")
-            if st.session_state.holidays_data:
-                events = st.session_state.holidays_data
-                year_events = [
-                    event
-                    for event in events
-                    if event["date"].startswith(str(selected_year))
-                ]
-                st.success(
-                    f"✅ Loaded {len([event for event in events if event['date'].startswith(str(selected_year))])} holidays!"
-                )
+    max_leave_days = 4
+    min_total_days_off = 5
+    max_window_days = 12
+    top_n = 3
+    preferred_month_labels: list[str] = []
+    selected_excluded_dates: list[date] = []
 
     st.divider()
 
@@ -149,9 +115,10 @@ planner_constraints = build_constraints(
 )
 
 recommended_plans = []
-if st.session_state.holidays_data:
+available_holidays = st.session_state.holidays_data.get(selected_year, [])
+if available_holidays:
     recommended_plans = generate_ranked_plans(
-        holidays_data=st.session_state.holidays_data,
+        holidays_data=available_holidays,
         year=selected_year,
         constraints=planner_constraints,
         top_n=top_n,
@@ -196,7 +163,7 @@ with col1:
             try:
                 response = st.session_state.llm_handler.create_chat_completion(
                     messages=recent_messages,
-                    holidays_data=st.session_state.holidays_data,
+                    holidays_data=available_holidays,
                     year=st.session_state.selected_year,
                     region="england-and-wales",
                     planner_constraints=planner_constraints,
@@ -205,7 +172,6 @@ with col1:
             except Exception as error:
                 error_type = type(error).__name__
                 response = "I hit an issue generating a response. Please try again."
-
             latency_ms = int((perf_counter() - start) * 1000)
             tool_name = (
                 "get_ranked_holiday_strategies"
@@ -233,11 +199,13 @@ with col1:
 with col2:
     st.subheader(f"🎉 Holidays {selected_year}")
 
-    if st.session_state.holidays_data:
+    available_holidays = st.session_state.holidays_data.get(selected_year, [])
+    if available_holidays:
         logger.info(f"Displaying holidays for {selected_year}")
-        events = st.session_state.holidays_data
         year_events = [
-            event for event in events if event["date"].startswith(str(selected_year))
+            event
+            for event in available_holidays
+            if event["date"].startswith(str(selected_year))
         ]
 
         if year_events:
@@ -256,7 +224,7 @@ with col2:
         else:
             st.warning(f"No holidays found for {selected_year}")
     else:
-        st.info("👈 Click 'Load Holidays' to see the list!")
+        st.info("👈 Holidays are loading or unavailable for this year.")
 
 
 # Footer

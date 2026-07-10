@@ -225,7 +225,15 @@ class HolidayLLMHandler:
 
         events = holidays_data
         if isinstance(holidays_data, dict):
-            events = holidays_data.get("events", [])
+            if "events" in holidays_data and isinstance(holidays_data["events"], list):
+                events = holidays_data["events"]
+            else:
+                events = [
+                    item
+                    for value in holidays_data.values()
+                    if isinstance(value, list)
+                    for item in value
+                ]
 
         if not isinstance(events, list):
             return "No holiday data available."
