@@ -42,19 +42,19 @@ variable "ecs_memory" {
 variable "min_task_count" {
   description = "Minimum number of ECS tasks to keep running for the public MVP."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_task_count" {
   description = "Maximum number of ECS tasks for the public MVP."
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "log_retention_days" {
   description = "CloudWatch log retention in days for container logs."
   type        = number
-  default     = 7
+  default     = 1
 }
 
 variable "tags" {
